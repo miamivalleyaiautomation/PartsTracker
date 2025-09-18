@@ -1030,11 +1030,13 @@ function applyTheme(){
 function toggleTheme(){
   state.theme = (state.theme === 'warm') ? 'cosmic' : 'warm';
   save(); applyTheme();
+  const t = document.getElementById('themeToggle');
+  if (t) t.setAttribute('aria-pressed', state.theme==='cosmic');
 }
 function toggleScan(){
   state.scanMode = !state.scanMode;
   const s = document.getElementById('scanToggle');
-  if (s){ s.textContent = state.scanMode ? 'Scan: On' : 'Scan: Off'; s.classList.toggle('toggle'); s.classList.toggle('on', state.scanMode); }
+  if (s){ s.textContent = state.scanMode ? 'Scan: On' : 'Scan: Off'; s.classList.add('toggle'); s.classList.toggle('on', state.scanMode); s.setAttribute('aria-pressed', state.scanMode); }
   if (state.scanMode && els.partSearch) els.partSearch.focus();
   save();
 }
@@ -1084,9 +1086,17 @@ function main() {
   initEvents();
   applyTheme();
   // Initialize toggle button labels
-  const tbtn = document.getElementById('themeToggle'); if (tbtn) tbtn.textContent = (state.theme==='warm') ? 'Color: Warm' : 'Color: Cosmic';
-  const sbtn = document.getElementById('scanToggle'); if (sbtn){ sbtn.textContent = state.scanMode ? 'Scan: On' : 'Scan: Off'; sbtn.classList.toggle('toggle'); sbtn.classList.toggle('on', state.scanMode); }
+  const tbtn = document.getElementById('themeToggle'); if (tbtn){ tbtn.textContent = (state.theme==='warm') ? 'Color: Warm' : 'Color: Cosmic'; tbtn.setAttribute('aria-pressed', state.theme==='cosmic'); }
+  const sbtn = document.getElementById('scanToggle'); if (sbtn){ sbtn.textContent = state.scanMode ? 'Scan: On' : 'Scan: Off'; sbtn.classList.add('toggle'); sbtn.classList.toggle('on', state.scanMode); sbtn.setAttribute('aria-pressed', state.scanMode); }
   syncUI();
 }
 
 document.addEventListener('DOMContentLoaded', main);
+
+
+// Click delegation fallback (ensures toggles work even if early binds failed)
+document.addEventListener('click', (e)=>{
+  const t = e.target.closest('#themeToggle'); if (t){ e.preventDefault(); toggleTheme(); }
+  const s = e.target.closest('#scanToggle'); if (s){ e.preventDefault(); toggleScan(); }
+});
+
