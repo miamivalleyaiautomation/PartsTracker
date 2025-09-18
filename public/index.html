@@ -35,6 +35,10 @@
           <h2>Jobs</h2>
           <button id="deleteJobBtn" class="danger small" disabled>Delete Job</button>
         </div>
+        <div class="job-search">
+          <input id="jobSearch" type="text" placeholder="Search or type Job ID…"/>
+          <small class="hint">Type to filter. Press <b>Enter</b> to select top match.</small>
+        </div>
         <ul id="jobsList" class="jobs-list"></ul>
       </div>
 
@@ -53,7 +57,6 @@
     <section class="content">
       <div class="search-bar">
         <div class="row">
-          <select id="jobSelect" class="job-select"></select>
           <input id="partSearch" type="text" placeholder="Enter or scan Part Number…" />
           <button id="clearSearch" class="ghost">Clear</button>
         </div>

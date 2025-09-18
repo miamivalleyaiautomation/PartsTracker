@@ -7,7 +7,9 @@ const els = {
   csvFile: $('#csvFile'),
   noHeader: $('#noHeader'),
   jobsList: $('#jobsList'),
-  jobSelect: $('#jobSelect'),
+  jobSelect: $('#jobSelect'), // legacy (removed)
+  jobSearch: $('#jobSearch'),
+  jobMatches: $('#jobMatches'),
   deleteJobBtn: $('#deleteJobBtn'),
   jobStats: $('#jobStats'),
   partSearch: $('#partSearch'),
@@ -32,6 +34,7 @@ let state = {
   searchPart: '',
   unassignedOnly: true,
   locationFilter: null,
+  jobQuery: '',
 };
 
 // Job schema:
@@ -54,6 +57,7 @@ function save() {
     locationFilter: state.locationFilter,
     searchPart: state.searchPart,
     unassignedOnly: state.unassignedOnly,
+    jobQuery: state.jobQuery,
   }));
 }
 
@@ -67,6 +71,7 @@ function load() {
     state.locationFilter = (data.locationFilter===undefined)? null : data.locationFilter;
     state.searchPart = (data.searchPart===undefined)? '' : data.searchPart;
     state.unassignedOnly = (data.unassignedOnly===undefined)? true : !!data.unassignedOnly;
+    state.jobQuery = (data.jobQuery===undefined)? '' : data.jobQuery;
   } catch(e) { console.warn('Failed to load storage', e); }
 }
 
@@ -112,22 +117,46 @@ function computeJobStats(job) {
   return { required, assigned, lines, pct };
 }
 
+
+function filterJobs(ids, query){
+  const q = (query||'').trim().toLowerCase();
+  if (!q) return ids.map(id => ({id, matchIdx: -1}));
+  const scored = [];
+  for (const id of ids){
+    const idx = id.toLowerCase().indexOf(q);
+    
+    scored.push({id, matchIdx: idx});
+  }
+  scored.sort((a,b)=> a.matchIdx - b.matchIdx);
+  return scored;
+}
+
+function highlightMatch(id, query){
+  const q = (query||'').trim();
+  if (!q) return id;
+  const i = id.toLowerCase().indexOf(q.toLowerCase());
+  if (i === -1) return id;
+  return id.slice(0,i) + '<mark>' + id.slice(i, i+q.length) + '</mark>' + id.slice(i+q.length);
+}
+
 function renderJobsList() {
   if (!els.jobsList) return;
   els.jobsList.innerHTML = '';
   const ids = Object.keys(state.jobs);
+  const filtered = filterJobs(ids, state.jobQuery);
   if (!ids.length) {
     els.jobsList.innerHTML = '<li><small>No jobs yet. Import CSVs to create jobs.</small></li>';
+  } else if (!filtered.length) {
+    els.jobsList.innerHTML = '<li><small>No matches.</small></li>';
   } else {
-    ids.forEach(id => {
+    filtered.forEach(({id}) => {
       const job = state.jobs[id];
       const stats = computeJobStats(job);
       const li = document.createElement('li');
       li.className = (state.selectedJobId===id) ? 'active' : '';
-      const pending = job.pendingRaw ? '<span class="tag" style="border-color:#f59e0b">pending</span>' : '';
       li.innerHTML = `
         <div>
-          <strong>${id}</strong> ${pending}<br/>
+          <strong>${highlightMatch(id, state.jobQuery)}</strong><br/>
           <small>${job.filename}</small>
         </div>
         <div class="tag">${stats.pct}%</div>
@@ -139,22 +168,8 @@ function renderJobsList() {
   if (els.deleteJobBtn) els.deleteJobBtn.disabled = !state.selectedJobId;
 }
 
-function renderJobSelect() {
-  if (!els.jobSelect) return;
-  els.jobSelect.innerHTML = '';
-  const ids = Object.keys(state.jobs);
-  ids.forEach(id => {
-    const opt = document.createElement('option');
-    opt.value = id; opt.textContent = id;
-    if (state.selectedJobId === id) opt.selected = true;
-    els.jobSelect.appendChild(opt);
-  });
-  if (!ids.length) {
-    const opt = document.createElement('option');
-    opt.textContent = 'No jobs';
-    els.jobSelect.appendChild(opt);
-  }
-}
+
+
 
 function renderJobStats() {
   if (!els.jobStats) return;
@@ -586,7 +601,6 @@ function downloadText(content, filename, mime) {
 
 function syncUI() {
   renderJobsList();
-  renderJobSelect();
   renderJobStats();
   renderLocationFilters();
   renderResults();
@@ -601,10 +615,80 @@ function initEvents() {
       for (const f of files) {
         const text = await f.text();
         await parseCsvText(text, f.name);
+      
+  if (els.jobSearch) {
+    els.jobSearch.value = state.jobQuery || '';
+    els.jobSearch.addEventListener('input', ()=>{
+      state.jobQuery = els.jobSearch.value;
+      syncUI();
+    });
+    els.jobSearch.addEventListener('keydown', (e)=>{
+      if (e.key === 'Enter') {
+        const ids = Object.keys(state.jobs);
+        const filtered = filterJobs(ids, state.jobQuery);
+        if (filtered.length) {
+          state.selectedJobId = filtered[0].id;
+          save(); syncUI();
+          // Focus part search for quick scanning
+          if (els.partSearch) els.partSearch.focus();
+        }
       }
-      els.csvFile.value = '';
     });
   }
+  // Mobile job matches list (only exists on mobile)
+  if (els.jobMatches) {
+    // Rendered in renderJobsList via the same function? We'll render here.
+    const ids = Object.keys(state.jobs);
+    const filtered = filterJobs(ids, state.jobQuery);
+    els.jobMatches.innerHTML = '';
+    filtered.slice(0,20).forEach(({id})=>{
+      const li = document.createElement('li');
+      li.className = (state.selectedJobId===id) ? 'active' : '';
+      li.innerHTML = `<strong>${highlightMatch(id, state.jobQuery)}</strong>`;
+      li.addEventListener('click', ()=>{ state.selectedJobId=id; save(); syncUI(); });
+      els.jobMatches.appendChild(li);
+    });
+  }
+
+}
+      els.csvFile.value = '';
+    });
+  
+  if (els.jobSearch) {
+    els.jobSearch.value = state.jobQuery || '';
+    els.jobSearch.addEventListener('input', ()=>{
+      state.jobQuery = els.jobSearch.value;
+      syncUI();
+    });
+    els.jobSearch.addEventListener('keydown', (e)=>{
+      if (e.key === 'Enter') {
+        const ids = Object.keys(state.jobs);
+        const filtered = filterJobs(ids, state.jobQuery);
+        if (filtered.length) {
+          state.selectedJobId = filtered[0].id;
+          save(); syncUI();
+          // Focus part search for quick scanning
+          if (els.partSearch) els.partSearch.focus();
+        }
+      }
+    });
+  }
+  // Mobile job matches list (only exists on mobile)
+  if (els.jobMatches) {
+    // Rendered in renderJobsList via the same function? We'll render here.
+    const ids = Object.keys(state.jobs);
+    const filtered = filterJobs(ids, state.jobQuery);
+    els.jobMatches.innerHTML = '';
+    filtered.slice(0,20).forEach(({id})=>{
+      const li = document.createElement('li');
+      li.className = (state.selectedJobId===id) ? 'active' : '';
+      li.innerHTML = `<strong>${highlightMatch(id, state.jobQuery)}</strong>`;
+      li.addEventListener('click', ()=>{ state.selectedJobId=id; save(); syncUI(); });
+      els.jobMatches.appendChild(li);
+    });
+  }
+
+}
   if (els.deleteJobBtn) {
     els.deleteJobBtn.addEventListener('click', ()=>{
       if (!state.selectedJobId) return;
@@ -613,51 +697,326 @@ function initEvents() {
         delete state.jobs[id];
         state.selectedJobId = Object.keys(state.jobs)[0] || null;
         save(); syncUI();
+      
+  if (els.jobSearch) {
+    els.jobSearch.value = state.jobQuery || '';
+    els.jobSearch.addEventListener('input', ()=>{
+      state.jobQuery = els.jobSearch.value;
+      syncUI();
+    });
+    els.jobSearch.addEventListener('keydown', (e)=>{
+      if (e.key === 'Enter') {
+        const ids = Object.keys(state.jobs);
+        const filtered = filterJobs(ids, state.jobQuery);
+        if (filtered.length) {
+          state.selectedJobId = filtered[0].id;
+          save(); syncUI();
+          // Focus part search for quick scanning
+          if (els.partSearch) els.partSearch.focus();
+        }
       }
     });
   }
-  if (els.jobSelect) {
-    els.jobSelect.addEventListener('change', ()=>{
-      const id = els.jobSelect.value;
-      state.selectedJobId = id; save(); syncUI();
+  // Mobile job matches list (only exists on mobile)
+  if (els.jobMatches) {
+    // Rendered in renderJobsList via the same function? We'll render here.
+    const ids = Object.keys(state.jobs);
+    const filtered = filterJobs(ids, state.jobQuery);
+    els.jobMatches.innerHTML = '';
+    filtered.slice(0,20).forEach(({id})=>{
+      const li = document.createElement('li');
+      li.className = (state.selectedJobId===id) ? 'active' : '';
+      li.innerHTML = `<strong>${highlightMatch(id, state.jobQuery)}</strong>`;
+      li.addEventListener('click', ()=>{ state.selectedJobId=id; save(); syncUI(); });
+      els.jobMatches.appendChild(li);
     });
   }
+
+}
+    });
+  
+  if (els.jobSearch) {
+    els.jobSearch.value = state.jobQuery || '';
+    els.jobSearch.addEventListener('input', ()=>{
+      state.jobQuery = els.jobSearch.value;
+      syncUI();
+    });
+    els.jobSearch.addEventListener('keydown', (e)=>{
+      if (e.key === 'Enter') {
+        const ids = Object.keys(state.jobs);
+        const filtered = filterJobs(ids, state.jobQuery);
+        if (filtered.length) {
+          state.selectedJobId = filtered[0].id;
+          save(); syncUI();
+          // Focus part search for quick scanning
+          if (els.partSearch) els.partSearch.focus();
+        }
+      }
+    });
+  }
+  // Mobile job matches list (only exists on mobile)
+  if (els.jobMatches) {
+    // Rendered in renderJobsList via the same function? We'll render here.
+    const ids = Object.keys(state.jobs);
+    const filtered = filterJobs(ids, state.jobQuery);
+    els.jobMatches.innerHTML = '';
+    filtered.slice(0,20).forEach(({id})=>{
+      const li = document.createElement('li');
+      li.className = (state.selectedJobId===id) ? 'active' : '';
+      li.innerHTML = `<strong>${highlightMatch(id, state.jobQuery)}</strong>`;
+      li.addEventListener('click', ()=>{ state.selectedJobId=id; save(); syncUI(); });
+      els.jobMatches.appendChild(li);
+    });
+  }
+
+}
   if (els.partSearch) {
     els.partSearch.addEventListener('input', ()=>{
       state.searchPart = els.partSearch.value.trim();
       syncUI();
     });
+  
+  if (els.jobSearch) {
+    els.jobSearch.value = state.jobQuery || '';
+    els.jobSearch.addEventListener('input', ()=>{
+      state.jobQuery = els.jobSearch.value;
+      syncUI();
+    });
+    els.jobSearch.addEventListener('keydown', (e)=>{
+      if (e.key === 'Enter') {
+        const ids = Object.keys(state.jobs);
+        const filtered = filterJobs(ids, state.jobQuery);
+        if (filtered.length) {
+          state.selectedJobId = filtered[0].id;
+          save(); syncUI();
+          // Focus part search for quick scanning
+          if (els.partSearch) els.partSearch.focus();
+        }
+      }
+    });
   }
+  // Mobile job matches list (only exists on mobile)
+  if (els.jobMatches) {
+    // Rendered in renderJobsList via the same function? We'll render here.
+    const ids = Object.keys(state.jobs);
+    const filtered = filterJobs(ids, state.jobQuery);
+    els.jobMatches.innerHTML = '';
+    filtered.slice(0,20).forEach(({id})=>{
+      const li = document.createElement('li');
+      li.className = (state.selectedJobId===id) ? 'active' : '';
+      li.innerHTML = `<strong>${highlightMatch(id, state.jobQuery)}</strong>`;
+      li.addEventListener('click', ()=>{ state.selectedJobId=id; save(); syncUI(); });
+      els.jobMatches.appendChild(li);
+    });
+  }
+
+}
   if (els.clearSearch) {
     els.clearSearch.addEventListener('click', ()=>{
       if (els.partSearch) els.partSearch.value='';
       state.searchPart=''; syncUI();
     });
+  
+  if (els.jobSearch) {
+    els.jobSearch.value = state.jobQuery || '';
+    els.jobSearch.addEventListener('input', ()=>{
+      state.jobQuery = els.jobSearch.value;
+      syncUI();
+    });
+    els.jobSearch.addEventListener('keydown', (e)=>{
+      if (e.key === 'Enter') {
+        const ids = Object.keys(state.jobs);
+        const filtered = filterJobs(ids, state.jobQuery);
+        if (filtered.length) {
+          state.selectedJobId = filtered[0].id;
+          save(); syncUI();
+          // Focus part search for quick scanning
+          if (els.partSearch) els.partSearch.focus();
+        }
+      }
+    });
   }
+  // Mobile job matches list (only exists on mobile)
+  if (els.jobMatches) {
+    // Rendered in renderJobsList via the same function? We'll render here.
+    const ids = Object.keys(state.jobs);
+    const filtered = filterJobs(ids, state.jobQuery);
+    els.jobMatches.innerHTML = '';
+    filtered.slice(0,20).forEach(({id})=>{
+      const li = document.createElement('li');
+      li.className = (state.selectedJobId===id) ? 'active' : '';
+      li.innerHTML = `<strong>${highlightMatch(id, state.jobQuery)}</strong>`;
+      li.addEventListener('click', ()=>{ state.selectedJobId=id; save(); syncUI(); });
+      els.jobMatches.appendChild(li);
+    });
+  }
+
+}
   if (els.unassignedOnly) {
     els.unassignedOnly.addEventListener('change', ()=>{
       state.unassignedOnly = !!els.unassignedOnly.checked;
       syncUI();
     });
+  
+  if (els.jobSearch) {
+    els.jobSearch.value = state.jobQuery || '';
+    els.jobSearch.addEventListener('input', ()=>{
+      state.jobQuery = els.jobSearch.value;
+      syncUI();
+    });
+    els.jobSearch.addEventListener('keydown', (e)=>{
+      if (e.key === 'Enter') {
+        const ids = Object.keys(state.jobs);
+        const filtered = filterJobs(ids, state.jobQuery);
+        if (filtered.length) {
+          state.selectedJobId = filtered[0].id;
+          save(); syncUI();
+          // Focus part search for quick scanning
+          if (els.partSearch) els.partSearch.focus();
+        }
+      }
+    });
   }
+  // Mobile job matches list (only exists on mobile)
+  if (els.jobMatches) {
+    // Rendered in renderJobsList via the same function? We'll render here.
+    const ids = Object.keys(state.jobs);
+    const filtered = filterJobs(ids, state.jobQuery);
+    els.jobMatches.innerHTML = '';
+    filtered.slice(0,20).forEach(({id})=>{
+      const li = document.createElement('li');
+      li.className = (state.selectedJobId===id) ? 'active' : '';
+      li.innerHTML = `<strong>${highlightMatch(id, state.jobQuery)}</strong>`;
+      li.addEventListener('click', ()=>{ state.selectedJobId=id; save(); syncUI(); });
+      els.jobMatches.appendChild(li);
+    });
+  }
+
+}
   if (els.exportReport) {
     els.exportReport.addEventListener('click', exportReportCsv);
+  
+  if (els.jobSearch) {
+    els.jobSearch.value = state.jobQuery || '';
+    els.jobSearch.addEventListener('input', ()=>{
+      state.jobQuery = els.jobSearch.value;
+      syncUI();
+    });
+    els.jobSearch.addEventListener('keydown', (e)=>{
+      if (e.key === 'Enter') {
+        const ids = Object.keys(state.jobs);
+        const filtered = filterJobs(ids, state.jobQuery);
+        if (filtered.length) {
+          state.selectedJobId = filtered[0].id;
+          save(); syncUI();
+          // Focus part search for quick scanning
+          if (els.partSearch) els.partSearch.focus();
+        }
+      }
+    });
   }
+  // Mobile job matches list (only exists on mobile)
+  if (els.jobMatches) {
+    // Rendered in renderJobsList via the same function? We'll render here.
+    const ids = Object.keys(state.jobs);
+    const filtered = filterJobs(ids, state.jobQuery);
+    els.jobMatches.innerHTML = '';
+    filtered.slice(0,20).forEach(({id})=>{
+      const li = document.createElement('li');
+      li.className = (state.selectedJobId===id) ? 'active' : '';
+      li.innerHTML = `<strong>${highlightMatch(id, state.jobQuery)}</strong>`;
+      li.addEventListener('click', ()=>{ state.selectedJobId=id; save(); syncUI(); });
+      els.jobMatches.appendChild(li);
+    });
+  }
+
+}
   if (els.backupBtn) els.backupBtn.addEventListener('click', backupAll);
   if (els.restoreBtn) els.restoreBtn.addEventListener('click', restoreAll);
   const mapBtn = document.getElementById('mapColumnsBtn');
   if (mapBtn) {
     mapBtn.addEventListener('click', ()=>{
-      if (!state.selectedJobId) { alert('Select a job first.'); return; }
-      openMapperForJob(state.selectedJobId);
+      if (!state.selectedJobId) { alert('Select a job first.'); return; 
+  if (els.jobSearch) {
+    els.jobSearch.value = state.jobQuery || '';
+    els.jobSearch.addEventListener('input', ()=>{
+      state.jobQuery = els.jobSearch.value;
+      syncUI();
+    });
+    els.jobSearch.addEventListener('keydown', (e)=>{
+      if (e.key === 'Enter') {
+        const ids = Object.keys(state.jobs);
+        const filtered = filterJobs(ids, state.jobQuery);
+        if (filtered.length) {
+          state.selectedJobId = filtered[0].id;
+          save(); syncUI();
+          // Focus part search for quick scanning
+          if (els.partSearch) els.partSearch.focus();
+        }
+      }
     });
   }
+  // Mobile job matches list (only exists on mobile)
+  if (els.jobMatches) {
+    // Rendered in renderJobsList via the same function? We'll render here.
+    const ids = Object.keys(state.jobs);
+    const filtered = filterJobs(ids, state.jobQuery);
+    els.jobMatches.innerHTML = '';
+    filtered.slice(0,20).forEach(({id})=>{
+      const li = document.createElement('li');
+      li.className = (state.selectedJobId===id) ? 'active' : '';
+      li.innerHTML = `<strong>${highlightMatch(id, state.jobQuery)}</strong>`;
+      li.addEventListener('click', ()=>{ state.selectedJobId=id; save(); syncUI(); });
+      els.jobMatches.appendChild(li);
+    });
+  }
+
+}
+      openMapperForJob(state.selectedJobId);
+    });
+  
+  if (els.jobSearch) {
+    els.jobSearch.value = state.jobQuery || '';
+    els.jobSearch.addEventListener('input', ()=>{
+      state.jobQuery = els.jobSearch.value;
+      syncUI();
+    });
+    els.jobSearch.addEventListener('keydown', (e)=>{
+      if (e.key === 'Enter') {
+        const ids = Object.keys(state.jobs);
+        const filtered = filterJobs(ids, state.jobQuery);
+        if (filtered.length) {
+          state.selectedJobId = filtered[0].id;
+          save(); syncUI();
+          // Focus part search for quick scanning
+          if (els.partSearch) els.partSearch.focus();
+        }
+      }
+    });
+  }
+  // Mobile job matches list (only exists on mobile)
+  if (els.jobMatches) {
+    // Rendered in renderJobsList via the same function? We'll render here.
+    const ids = Object.keys(state.jobs);
+    const filtered = filterJobs(ids, state.jobQuery);
+    els.jobMatches.innerHTML = '';
+    filtered.slice(0,20).forEach(({id})=>{
+      const li = document.createElement('li');
+      li.className = (state.selectedJobId===id) ? 'active' : '';
+      li.innerHTML = `<strong>${highlightMatch(id, state.jobQuery)}</strong>`;
+      li.addEventListener('click', ()=>{ state.selectedJobId=id; save(); syncUI(); });
+      els.jobMatches.appendChild(li);
+    });
+  }
+
+}
 }
 
 function main() {
   load();
   if (els.unassignedOnly) els.unassignedOnly.checked = state.unassignedOnly;
   if (els.partSearch) els.partSearch.value = state.searchPart || '';
+  if (els.jobSearch) els.jobSearch.value = state.jobQuery || '';
   initEvents();
   syncUI();
 }

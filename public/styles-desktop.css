@@ -74,3 +74,12 @@ dialog::backdrop{background:rgba(0,0,0,.5)}
 .loc-filters .pill{border:1px solid var(--line);background:rgba(255,255,255,.03);color:var(--fg);padding:6px 10px;border-radius:999px;cursor:pointer;user-select:none;white-space:nowrap}
 .loc-filters .pill.active{outline:2px solid var(--accent);background:rgba(99,102,241,.15)}
 .loc-filters .pill.all{border-style:dashed}
+
+/* ===== Job search UX ===== */
+.job-search{display:flex;flex-direction:column;gap:6px;margin-bottom:8px}
+.job-search input{background:#0f1623;color:var(--fg);border:1px solid var(--line);border-radius:10px;padding:10px}
+.job-search .hint{color:var(--muted);font-size:12px}
+.jobs-list li mark{background:rgba(99,102,241,.35);padding:0 2px;border-radius:4px}
+.jobs-list.mobile{list-style:none;padding:6px 0;margin:0;display:flex;flex-direction:column;gap:6px}
+.jobs-list.mobile li{padding:10px;border:1px solid var(--line);border-radius:10px;background:rgba(255,255,255,.03)}
+.jobs-list.mobile li.active{outline:2px solid var(--accent)}

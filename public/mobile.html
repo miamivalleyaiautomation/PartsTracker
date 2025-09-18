@@ -27,7 +27,8 @@
 
   <main class="m-content">
     <section class="m-controls">
-      <select id="jobSelect" class="m-job"></select>
+      <input id="jobSearch" class="m-job" type="text" placeholder="Search or type Job ID…"/>
+      <ul id="jobMatches" class="jobs-list mobile"></ul>
       <input id="partSearch" type="text" placeholder="Scan/Enter Part Number…" inputmode="search" />
       <div class="small-options">
         <label><input type="checkbox" id="unassignedOnly" checked> Unassigned only</label>
