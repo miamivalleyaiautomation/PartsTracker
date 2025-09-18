@@ -1,37 +1,59 @@
 :root{
-  --bg:#070b1a;
-  --bg-grad-1:#070b1a;
-  --bg-grad-2:#0b1024;
-  --fg:#eaf0ff;
-  --muted:#9fb0c7;
-  --card:#0a142e;
-  --line:#1a2440;
-  --accent:#8b5cf6;
-  --accent2:#22d3ee;
-  --ok:#22c55e;
-  --bad:#f43f5e;
-  --warn:#f59e0b;
-  --shadow: 0 14px 28px rgba(0,0,0,.35);
+  --bg:#f6efe7;             /* paper/cream */
+  --fg:#3f3831;             /* warm charcoal */
+  --muted:#8b7e70;          /* taupe */
+  --card:#fffaf3;           /* elevated surface */
+  --line:#e9ded4;           /* soft border */
+  --accent:#c87753;         /* terracotta */
+  --accent2:#e7b08a;        /* peach */
+  --ok:#6da26a;             /* sage */
+  --bad:#c56351;            /* clay red */
+  --warn:#c9a24a;           /* wheat */
+  --shadow:0 10px 26px rgba(120,86,60,.15);
 }
 *{box-sizing:border-box}
 html,body{
   margin:0;
-  background: radial-gradient(1200px 800px at 20% -10%, rgba(139,92,246,.18), transparent 60%),
-              radial-gradient(1000px 700px at 100% 0%, rgba(34,211,238,.15), transparent 55%),
-              linear-gradient(180deg,var(--bg-grad-1), var(--bg-grad-2));
   color:var(--fg);
-  font:15.5px/1.5 "Plus Jakarta Sans", system-ui, -apple-system, Segoe UI, Roboto, Inter, Helvetica, Arial, sans-serif;
+  font:15.5px/1.55 Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+  background:
+    /* dots (several small radial gradients placed around) */
+    radial-gradient(circle at 8% 72%, rgba(135,115,98,.35) 1.1px, transparent 1.2px),
+    radial-gradient(circle at 15% 82%, rgba(135,115,98,.28) 1.3px, transparent 1.4px),
+    radial-gradient(circle at 22% 64%, rgba(135,115,98,.28) 1.4px, transparent 1.6px),
+    radial-gradient(circle at 28% 70%, rgba(135,115,98,.22) 1.1px, transparent 1.3px),
+    radial-gradient(circle at 62% 9%, rgba(135,115,98,.28) 1.6px, transparent 1.7px),
+    radial-gradient(circle at 78% 86%, rgba(135,115,98,.25) 1.1px, transparent 1.3px),
+    radial-gradient(circle at 83% 22%, rgba(135,115,98,.28) 1.6px, transparent 1.7px),
+    radial-gradient(circle at 94% 44%, rgba(135,115,98,.25) 1.3px, transparent 1.4px),
+    /* thin grid lines */
+    repeating-linear-gradient(to right, transparent 0, transparent 239px, rgba(205,182,160,.35) 240px, transparent 241px),
+    repeating-linear-gradient(to bottom, transparent 0, transparent 239px, rgba(205,182,160,.35) 240px, transparent 241px),
+    /* soft paper base */
+    linear-gradient(180deg, #fbf6ef, #f6efe7);
 }
 body{
   margin:0;
-  background: radial-gradient(1200px 800px at 20% -10%, rgba(139,92,246,.18), transparent 60%),
-              radial-gradient(1000px 700px at 100% 0%, rgba(34,211,238,.15), transparent 55%),
-              linear-gradient(180deg,var(--bg-grad-1), var(--bg-grad-2));
   color:var(--fg);
-  font:15.5px/1.5 "Plus Jakarta Sans", system-ui, -apple-system, Segoe UI, Roboto, Inter, Helvetica, Arial, sans-serif;
+  font:15.5px/1.55 Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+  background:
+    /* dots (several small radial gradients placed around) */
+    radial-gradient(circle at 8% 72%, rgba(135,115,98,.35) 1.1px, transparent 1.2px),
+    radial-gradient(circle at 15% 82%, rgba(135,115,98,.28) 1.3px, transparent 1.4px),
+    radial-gradient(circle at 22% 64%, rgba(135,115,98,.28) 1.4px, transparent 1.6px),
+    radial-gradient(circle at 28% 70%, rgba(135,115,98,.22) 1.1px, transparent 1.3px),
+    radial-gradient(circle at 62% 9%, rgba(135,115,98,.28) 1.6px, transparent 1.7px),
+    radial-gradient(circle at 78% 86%, rgba(135,115,98,.25) 1.1px, transparent 1.3px),
+    radial-gradient(circle at 83% 22%, rgba(135,115,98,.28) 1.6px, transparent 1.7px),
+    radial-gradient(circle at 94% 44%, rgba(135,115,98,.25) 1.3px, transparent 1.4px),
+    /* thin grid lines */
+    repeating-linear-gradient(to right, transparent 0, transparent 239px, rgba(205,182,160,.35) 240px, transparent 241px),
+    repeating-linear-gradient(to bottom, transparent 0, transparent 239px, rgba(205,182,160,.35) 240px, transparent 241px),
+    /* soft paper base */
+    linear-gradient(180deg, #fbf6ef, #f6efe7);
 }
 
-.app-header{display:flex;align-items:center;justify-content:space-between;padding:16px 18px;border-bottom:1px solid var(--line);background:linear-gradient(180deg,#0b1124, #070b1a)}
+.app-header{display:flex;align-items:center;justify-content:space-between;padding:16px 18px;border-bottom:1px solid var(--line);background:linear-gradient(180deg,#f7f1e9,#f6efe7)}
 .brand{display:flex;gap:12px;align-items:center}
 .logo{font-size:28px}
 .titles h1{margin:0;font-size:20px}
@@ -42,7 +64,7 @@ body{
 .sidebar{padding:16px;border-right:1px solid var(--line)}
 .content{padding:16px}
 
-.panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;box-shadow:var(--shadow);margin-bottom:14px}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;box-shadow:var(--shadow);margin-bottom:14px}
 .panel-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
 
 .jobs-list{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:6px;max-height:40vh;overflow:auto}
@@ -53,29 +75,29 @@ body{
 .file-btn{position:relative;overflow:hidden;display:inline-flex;gap:8px;align-items:center;padding:8px 12px;border:1px dashed var(--line);border-radius:10px;cursor:pointer}
 .file-btn input{position:absolute;inset:0;opacity:0}
 
-button, .ghost{background:linear-gradient(90deg,var(--accent),var(--accent2));border:none;color:white;padding:10px 14px;border-radius:12px;cursor:pointer;box-shadow:0 1px 0 rgba(255,255,255,.06) inset, 0 10px 20px rgba(0,0,0,.25)}
+button, .ghost{background:var(--accent);border:none;color:#fff;padding:10px 16px;border-radius:14px;cursor:pointer;box-shadow:inset 0 0 0 2px rgba(255,255,255,.35), inset 0 0 0 6px rgba(255,255,255,.15), var(--shadow)}
 button.small, .ghost.small{padding:6px 10px;font-size:12px;border-radius:10px}
 .ghost{background:transparent;border:1px solid var(--line);color:var(--fg);box-shadow:none}
 button.danger{background:var(--bad)}
-button.primary{background:linear-gradient(90deg,var(--accent),var(--accent2))}
+button.primary{background:var(--accent)}
 button:disabled{opacity:.5;cursor:not-allowed}
 
 .search-bar .row{display:flex;gap:8px;margin-bottom:8px}
-.job-select, input[type="text"], select{background:#0b1430;color:var(--fg);border:1px solid var(--line);border-radius:12px;padding:10px;outline:2px solid transparent;outline-offset:2px}
+.job-select, input[type="text"], select{background:#fbf7f2;color:var(--fg);border:1px solid var(--line);border-radius:12px;padding:12px;outline:2px solid transparent;outline-offset:2px}
 input[type="text"]{flex:1}
 
 .results{display:flex;flex-direction:column;gap:12px}
 .empty{padding:24px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:12px}
 
-.card{background:linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,.00)), var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:0 0 0 1px rgba(255,255,255,.04) inset, var(--shadow);padding:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow);padding:16px}
 .card h3{margin:0 0 6px 0}
 .meta{display:flex;gap:12px;color:var(--muted);font-size:12px;margin-bottom:8px;flex-wrap:wrap}
 .badge{padding:3px 8px;border-radius:999px;border:1px solid var(--line);background:rgba(255,255,255,.03)}
 .progress{height:8px;border-radius:6px;background:#0f1623;border:1px solid var(--line);overflow:hidden;margin:8px 0}
-.progress > div{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));box-shadow:0 0 20px rgba(139,92,246,.35);width:0%}
+.progress > div{height:100%;background:linear-gradient(90deg,#c87753,#e7b08a);box-shadow:none;width:0%}
 
 .table{width:100%;border-collapse:collapse;margin-top:6px}
-.table th,.table td{border-bottom:1px solid rgba(255,255,255,.06);padding:10px;text-align:left}
+.table th,.table td{border-bottom:1px solid var(--line);padding:12px;text-align:left}
 .table th{color:var(--muted);font-weight:600}
 .qty{display:flex;gap:6px;align-items:center}
 .qty input{width:70px}
@@ -95,8 +117,8 @@ dialog::backdrop{background:rgba(0,0,0,.5)}
 
 /* Location pill filters */
 .loc-filters{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:8px 0 4px 0;overflow:auto;padding-bottom:6px}
-.loc-filters .pill{border:1px solid var(--line);background:rgba(255,255,255,.04);color:var(--fg);padding:8px 12px;border-radius:999px;cursor:pointer;user-select:none;white-space:nowrap;transition:all .15s ease}
-.loc-filters .pill.active{outline:2px solid var(--accent);background:linear-gradient(90deg, rgba(139,92,246,.22), rgba(34,211,238,.18));box-shadow:0 0 0 3px rgba(139,92,246,.15)}
+.loc-filters .pill{border:1px solid var(--line);background:#fbf7f2;color:var(--fg);padding:8px 12px;border-radius:999px;cursor:pointer;user-select:none;white-space:nowrap;transition:all .15s ease}
+.loc-filters .pill.active{outline:2px solid rgba(200,119,83,.35);background:#ffeede;box-shadow:0 0 0 3px rgba(200,119,83,.18)}
 .loc-filters .pill.all{border-style:dashed}
 
 /* ===== Job search UX ===== */
@@ -107,3 +129,7 @@ dialog::backdrop{background:rgba(0,0,0,.5)}
 .jobs-list.mobile{list-style:none;padding:6px 0;margin:0;display:flex;flex-direction:column;gap:6px}
 .jobs-list.mobile li{padding:10px;border:1px solid var(--line);border-radius:10px;background:rgba(255,255,255,.03)}
 .jobs-list.mobile li.active{outline:2px solid var(--accent)}
+
+h1,h2,h3{font-family:"Fraunces", serif; color:var(--fg); letter-spacing:.2px}
+h1{font-weight:700}
+h2,h3{font-weight:600}
