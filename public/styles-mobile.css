@@ -36,3 +36,9 @@ button,.ghost{background:var(--accent);border:none;color:white;padding:8px 12px;
 .qty{display:flex;gap:6px;align-items:center}
 .qty input{width:70px}
 .tag{display:inline-block;padding:2px 6px;border-radius:8px;border:1px solid var(--line);font-size:12px}
+
+/* Location pill filters */
+.loc-filters{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:8px 0 4px 0;overflow:auto;padding-bottom:6px}
+.loc-filters .pill{border:1px solid var(--line);background:rgba(255,255,255,.03);color:var(--fg);padding:6px 10px;border-radius:999px;cursor:pointer;user-select:none;white-space:nowrap}
+.loc-filters .pill.active{outline:2px solid var(--accent);background:rgba(99,102,241,.15)}
+.loc-filters .pill.all{border-style:dashed}

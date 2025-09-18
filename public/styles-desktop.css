@@ -68,3 +68,9 @@ dialog::backdrop{background:rgba(0,0,0,.5)}
 .mapper-fields{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .mapper .field{display:flex;flex-direction:column;gap:6px}
 .mapper footer{display:flex;justify-content:flex-end;gap:10px;margin-top:12px}
+
+/* Location pill filters */
+.loc-filters{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:8px 0 4px 0;overflow:auto;padding-bottom:6px}
+.loc-filters .pill{border:1px solid var(--line);background:rgba(255,255,255,.03);color:var(--fg);padding:6px 10px;border-radius:999px;cursor:pointer;user-select:none;white-space:nowrap}
+.loc-filters .pill.active{outline:2px solid var(--accent);background:rgba(99,102,241,.15)}
+.loc-filters .pill.all{border-style:dashed}

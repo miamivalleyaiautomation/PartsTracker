@@ -31,6 +31,7 @@ let state = {
   selectedJobId: null,
   searchPart: '',
   unassignedOnly: true,
+  locationFilter: null,
 };
 
 // Job schema:
@@ -50,6 +51,9 @@ function save() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify({
     jobs: state.jobs,
     selectedJobId: state.selectedJobId,
+    locationFilter: state.locationFilter,
+    searchPart: state.searchPart,
+    unassignedOnly: state.unassignedOnly,
   }));
 }
 
@@ -60,6 +64,9 @@ function load() {
     const data = JSON.parse(raw);
     state.jobs = data.jobs || {};
     state.selectedJobId = data.selectedJobId || Object.keys(state.jobs)[0] || null;
+    state.locationFilter = (data.locationFilter===undefined)? null : data.locationFilter;
+    state.searchPart = (data.searchPart===undefined)? '' : data.searchPart;
+    state.unassignedOnly = (data.unassignedOnly===undefined)? true : !!data.unassignedOnly;
   } catch(e) { console.warn('Failed to load storage', e); }
 }
 
@@ -168,6 +175,42 @@ function renderJobStats() {
       ${pending}
     </div>
   `;
+}
+
+
+function collectLocations(job){
+  const set = new Set();
+  for (const p of Object.values(job.parts)){
+    for (const loc of Object.keys(p.locations)) set.add(loc);
+  }
+  return Array.from(set).sort((a,b)=>a.localeCompare(b, undefined, {numeric:true}));
+}
+
+function renderLocationFilters(){
+  const box = document.getElementById('locationFilters');
+  if (!box) return;
+  box.innerHTML = '';
+  if (!state.selectedJobId || !state.jobs[state.selectedJobId]) return;
+  const job = state.jobs[state.selectedJobId];
+  const locs = collectLocations(job);
+  if (!locs.length && !job.pendingRaw){
+    box.innerHTML = '<div class="empty">No locations yet.</div>';
+    return;
+  }
+  const mk = (text, key, extra='')=>{
+    const span = document.createElement('span');
+    span.className = 'pill ' + (extra||'');
+    span.textContent = text;
+    if ((key==null && !state.locationFilter) || (key===state.locationFilter)) span.classList.add('active');
+    span.addEventListener('click', ()=>{
+      if (key == null){ state.locationFilter = null; }
+      else { state.locationFilter = (state.locationFilter===key) ? null : key; }
+      save(); syncUI();
+    });
+    return span;
+  };
+  box.appendChild(mk('All locations', null, 'all'));
+  locs.forEach(loc=> box.appendChild(mk(loc, loc)));
 }
 
 function matchHeaders(headers) {
@@ -331,46 +374,58 @@ function renderResults() {
     return;
   }
   const job = state.jobs[state.selectedJobId];
-  const partQuery = (state.searchPart||'').trim();
+  const partQuery = (state.searchPart||'').trim().toLowerCase();
 
   if (job.pendingRaw && !Object.keys(job.parts).length) {
     container.innerHTML = '<div class="empty">Job created. Click <strong>Map Columns</strong> to complete import.</div>';
     return;
   }
 
+  const entries = Object.entries(job.parts);
+
+  // Apply location filter first
+  const loc = state.locationFilter;
+  let list = loc ? entries.filter(([pn, p]) => p.locations.hasOwnProperty(loc)) : entries;
+
+  // Dynamic search: substring on part number OR description
   if (partQuery) {
-    const part = job.parts[partQuery];
-    if (!part) {
-      container.innerHTML = '<div class="empty">No match for that part in this job.</div>';
-      return;
-    }
-    container.appendChild(renderPartCard(partQuery, part, true));
-  } else {
-    const entries = Object.entries(job.parts);
-    let count = 0;
-    for (const [pn, p] of entries) {
+    list = list.filter(([pn, p]) => pn.toLowerCase().includes(partQuery) || (p.description||'').toLowerCase().includes(partQuery));
+  }
+
+  // Unassigned-only filter (ignored when a specific location is selected per user's request)
+  const applyUnassigned = !loc && state.unassignedOnly;
+  if (applyUnassigned) {
+    list = list.filter(([pn, p]) => {
       const unassignedTotal = Object.keys(p.locations).reduce((sum,loc)=>{
         const req = p.locations[loc];
         const asg = p.assigned[loc]||0;
         return sum + Math.max(0, req - asg);
       },0);
-      if (state.unassignedOnly && unassignedTotal === 0) continue;
-      container.appendChild(renderPartCard(pn, p, false));
-      count++;
-    }
-    if (!count) {
-      container.innerHTML = '<div class="empty">Everything is assigned! (Or broaden your filters.)</div>';
-    }
+      return unassignedTotal > 0;
+    });
   }
+
+  if (!list.length) {
+    const msg = loc ? `No parts found for location <strong>${loc}</strong> with current search.` : 'No parts match your filters.';
+    container.innerHTML = '<div class="empty">' + msg + '</div>';
+    return;
+  }
+
+  // Render cards. If a location is selected, only show that row inside each card.
+  list.forEach(([pn, p]) => container.appendChild(renderPartCard(pn, p, false, loc)));
 }
 
-function renderPartCard(partNumber, part, expanded) {
+
+function renderPartCard(partNumber, part, expanded, onlyLoc) {
   const card = document.createElement('div');
   card.className = 'card';
-  const required = Object.values(part.locations).reduce((a,b)=>a+b,0);
+
+  // Compute stats (respect onlyLoc when computing assigned)
+  const required = Object.entries(part.locations).reduce((acc,[loc,qty])=> acc + (onlyLoc && loc!==onlyLoc ? 0 : qty), 0);
   const assigned = Object.entries(part.assigned).reduce((acc,[loc,val])=>{
     const req = part.locations[loc]||0;
-    return acc + Math.min(req, val||0);
+    const use = onlyLoc && loc!==onlyLoc ? 0 : Math.min(req, val||0);
+    return acc + use;
   },0);
   const pct = required ? Math.round(100*assigned/required) : 0;
 
@@ -391,6 +446,7 @@ function renderPartCard(partNumber, part, expanded) {
   const tbody = document.createElement('tbody');
 
   Object.keys(part.locations).sort().forEach(loc => {
+    if (onlyLoc && loc !== onlyLoc) return;
     const req = part.locations[loc];
     const asg = Math.min(part.assigned[loc]||0, req);
     const rem = Math.max(0, req - asg);
@@ -412,11 +468,9 @@ function renderPartCard(partNumber, part, expanded) {
     const [minus, plus] = tr.querySelectorAll('button.ghost');
     minus.addEventListener('click', ()=> adjustAssignment(state.selectedJobId, partNumber, loc, -1));
     plus.addEventListener('click', ()=> adjustAssignment(state.selectedJobId, partNumber, loc, +1));
-
     const applyBtn = tr.querySelector('button.apply');
     const input = tr.querySelector('input.assign-input');
     applyBtn.addEventListener('click', ()=> setAssignment(state.selectedJobId, partNumber, loc, parseInt(input.value,10)||0));
-
     tbody.appendChild(tr);
   });
 
@@ -427,13 +481,23 @@ function renderPartCard(partNumber, part, expanded) {
   footer.style.marginTop = '8px';
   const fillAll = document.createElement('button');
   fillAll.className = 'ghost small';
-  fillAll.textContent = 'Mark Fully Assigned';
-  fillAll.addEventListener('click', ()=> markFullyAssigned(state.selectedJobId, partNumber));
+  fillAll.textContent = onlyLoc ? `Mark Fully Assigned (${onlyLoc})` : 'Mark Fully Assigned';
+  fillAll.addEventListener('click', ()=> {
+    if (onlyLoc) {
+      // set only this location to full
+      if (!part.locations[onlyLoc]) return;
+      part.assigned[onlyLoc] = part.locations[onlyLoc];
+      save(); syncUI();
+    } else {
+      markFullyAssigned(state.selectedJobId, partNumber);
+    }
+  });
   footer.appendChild(fillAll);
 
   card.appendChild(footer);
   return card;
 }
+
 
 function adjustAssignment(jobId, partNumber, loc, delta) {
   const job = state.jobs[jobId]; if (!job) return;
@@ -524,6 +588,7 @@ function syncUI() {
   renderJobsList();
   renderJobSelect();
   renderJobStats();
+  renderLocationFilters();
   renderResults();
 
   if (els.deleteJobBtn) els.deleteJobBtn.disabled = !state.selectedJobId;
