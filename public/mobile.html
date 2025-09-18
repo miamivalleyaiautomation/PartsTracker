@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Parts Assistant — Mobile</title>
+  <link rel="stylesheet" href="/styles-mobile.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📦</text></svg>">
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+</head>
+<body>
+  <header class="m-header">
+    <div class="brand">
+      <span class="logo">📦</span>
+      <strong>Parts Assistant</strong>
+    </div>
+    <div class="actions">
+      <label class="file-btn">
+        <input id="csvFile" type="file" accept=".csv" multiple />
+        Import
+      </label>
+      <button id="backupBtn" class="ghost">Backup</button>
+      <button id="restoreBtn" class="ghost">Restore</button>
+      <a class="ghost" href="/" title="Desktop UI">Desktop</a>
+    </div>
+  </header>
+
+  <main class="m-content">
+    <section class="m-controls">
+      <select id="jobSelect" class="m-job"></select>
+      <input id="partSearch" type="text" placeholder="Scan/Enter Part Number…" inputmode="search" />
+      <div class="small-options">
+        <label><input type="checkbox" id="unassignedOnly" checked> Unassigned only</label>
+        <button id="exportReport" class="ghost small">CSV</button>
+      </div>
+    </section>
+
+    <section class="m-results" id="results">
+      <div class="empty">Upload a CSV to begin.</div>
+    </section>
+  </main>
+
+  <!-- Column Mapper Modal -->
+  <dialog id="mapperDialog">
+    <form method="dialog" class="mapper">
+      <header>
+        <h3>Map CSV Columns</h3>
+        <p>We tried to guess your headers. Adjust if needed.</p>
+      </header>
+      <section id="mapperFields" class="mapper-fields"></section>
+      <footer>
+        <button value="cancel" class="ghost">Cancel</button>
+        <button id="mapperConfirm" value="ok" class="primary">Continue</button>
+      </footer>
+    </form>
+  </dialog>
+
+  <script src="/app.js"></script>
+</body>
+</html>

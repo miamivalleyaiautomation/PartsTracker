@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Parts Assistant — Desktop</title>
+  <link rel="stylesheet" href="/styles-desktop.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📦</text></svg>">
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+</head>
+<body>
+  <header class="app-header">
+    <div class="brand">
+      <div class="logo">📦</div>
+      <div class="titles">
+        <h1>Parts Assistant</h1>
+        <p class="subtitle">Sort tote parts to cabinets by job & location</p>
+      </div>
+    </div>
+    <nav class="header-actions">
+      <label class="file-btn">
+        <input id="csvFile" type="file" accept=".csv" multiple />
+        Import CSVs
+      </label>
+      <button id="backupBtn" class="ghost">Backup</button>
+      <button id="restoreBtn" class="ghost">Restore</button>
+      <a class="ghost" href="/mobile.html" title="Mobile UI">Mobile</a>
+    </nav>
+  </header>
+
+  <main class="layout">
+    <aside class="sidebar">
+      <div class="panel">
+        <div class="panel-header">
+          <h2>Jobs</h2>
+          <button id="deleteJobBtn" class="danger small" disabled>Delete Job</button>
+        </div>
+        <ul id="jobsList" class="jobs-list"></ul>
+      </div>
+
+      <div class="panel">
+        <h2>Import Options</h2>
+        <div class="option"><label><input type="checkbox" id="noHeader"> CSV has no header row</label></div>
+      </div>
+
+      <div class="panel">
+        <h2>Job Stats</h2>
+        <div id="jobStats" class="stats">No job selected.</div>
+      </div>
+    </aside>
+
+    <section class="content">
+      <div class="search-bar">
+        <div class="row">
+          <select id="jobSelect" class="job-select"></select>
+          <input id="partSearch" type="text" placeholder="Enter or scan Part Number…" />
+          <button id="clearSearch" class="ghost">Clear</button>
+        </div>
+        <div class="row">
+          <label><input type="checkbox" id="unassignedOnly" checked> Unassigned only</label>
+          <button id="exportReport" class="ghost">Export CSV Report</button>
+        </div>
+      </div>
+
+      <div id="results" class="results">
+        <div class="empty">Upload a CSV to begin.</div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Column Mapper Modal -->
+  <dialog id="mapperDialog">
+    <form method="dialog" class="mapper">
+      <header>
+        <h3>Map CSV Columns</h3>
+        <p>We tried to guess your headers. Adjust if needed.</p>
+      </header>
+      <section id="mapperFields" class="mapper-fields"></section>
+      <footer>
+        <button value="cancel" class="ghost">Cancel</button>
+        <button id="mapperConfirm" value="ok" class="primary">Continue</button>
+      </footer>
+    </form>
+  </dialog>
+
+  <script src="/app.js"></script>
+  <script>
+    // Suggest switching to Mobile UI if screen is small
+    if (window.innerWidth < 820) {
+      console.log('Tip: There is a mobile-optimized view at /mobile.html');
+    }
+  </script>
+</body>
+</html>
