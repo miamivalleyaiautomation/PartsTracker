@@ -83,7 +83,7 @@ button.primary{background:var(--accent)}
 button:disabled{opacity:.5;cursor:not-allowed}
 
 .search-bar .row{display:flex;gap:8px;margin-bottom:8px}
-.job-select, input[type="text"], select{background:#c87753 color:var(--fg);border:1px solid var(--line);border-radius:12px;padding:12px;outline:2px solid transparent;outline-offset:2px}
+.job-select, input[type="text"], select{background:#fbf7f2;color:var(--fg);border:1px solid var(--line);border-radius:12px;padding:12px;outline:2px solid transparent;outline-offset:2px}
 input[type="text"]{flex:1}
 
 .results{display:flex;flex-direction:column;gap:12px}
@@ -93,7 +93,7 @@ input[type="text"]{flex:1}
 .card h3{margin:0 0 6px 0}
 .meta{display:flex;gap:12px;color:var(--muted);font-size:12px;margin-bottom:8px;flex-wrap:wrap}
 .badge{padding:3px 8px;border-radius:999px;border:1px solid var(--line);background:rgba(255,255,255,.03)}
-.progress{height:8px;border-radius:6px;background:#0C87753;border:1px solid var(--line);overflow:hidden;margin:8px 0}
+.progress{height:8px;border-radius:6px;background:#0f1623;border:1px solid var(--line);overflow:hidden;margin:8px 0}
 .progress > div{height:100%;background:linear-gradient(90deg,#c87753,#e7b08a);box-shadow:none;width:0%}
 
 .table{width:100%;border-collapse:collapse;margin-top:6px}
@@ -133,3 +133,34 @@ dialog::backdrop{background:rgba(0,0,0,.5)}
 h1,h2,h3{font-family:"Fraunces", serif; color:var(--fg); letter-spacing:.2px}
 h1{font-weight:700}
 h2,h3{font-weight:600}
+
+/* === Orange (Delete) schema for Job & Part search === */
+#jobSearch,
+#partSearch{
+  background:#fff2ea;                 /* pale peach */
+  border:1.5px solid var(--bad);      /* same hue as Delete */
+  color:var(--fg);
+  border-radius:14px;
+  padding:12px;
+  outline:none;
+  box-shadow:
+    inset 0 0 0 2px rgba(255,255,255,.55),
+    0 0 0 3px rgba(197,99,81,.12);
+}
+#jobSearch::placeholder,
+#partSearch::placeholder{ color:#a88f7d }
+
+#jobSearch:focus,
+#partSearch:focus{
+  box-shadow:
+    inset 0 0 0 2px rgba(255,255,255,.65),
+    0 0 0 3px rgba(197,99,81,.22),
+    0 6px 18px rgba(197,99,81,.18);
+}
+
+@media (prefers-color-scheme: dark){
+  #jobSearch,
+  #partSearch{
+    background:#ffefe6;
+  }
+}
