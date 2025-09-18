@@ -41,6 +41,7 @@
       <div class="panel">
         <h2>Import Options</h2>
         <div class="option"><label><input type="checkbox" id="noHeader"> CSV has no header row</label></div>
+        <button id="mapColumnsBtn" class="ghost small">Map Columns for Job</button>
       </div>
 
       <div class="panel">
@@ -73,7 +74,7 @@
     <form method="dialog" class="mapper">
       <header>
         <h3>Map CSV Columns</h3>
-        <p>We tried to guess your headers. Adjust if needed.</p>
+        <p>Select the columns to use. You can leave Quantity blank (defaults to 1) and add a second Location column to combine.</p>
       </header>
       <section id="mapperFields" class="mapper-fields"></section>
       <footer>
@@ -84,11 +85,5 @@
   </dialog>
 
   <script src="/app.js"></script>
-  <script>
-    // Suggest switching to Mobile UI if screen is small
-    if (window.innerWidth < 820) {
-      console.log('Tip: There is a mobile-optimized view at /mobile.html');
-    }
-  </script>
 </body>
 </html>

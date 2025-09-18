@@ -31,7 +31,10 @@
       <input id="partSearch" type="text" placeholder="Scan/Enter Part Number…" inputmode="search" />
       <div class="small-options">
         <label><input type="checkbox" id="unassignedOnly" checked> Unassigned only</label>
-        <button id="exportReport" class="ghost small">CSV</button>
+        <div class="controls">
+          <button id="mapColumnsBtn" class="ghost small">Map</button>
+          <button id="exportReport" class="ghost small">CSV</button>
+        </div>
       </div>
     </section>
 
@@ -45,7 +48,7 @@
     <form method="dialog" class="mapper">
       <header>
         <h3>Map CSV Columns</h3>
-        <p>We tried to guess your headers. Adjust if needed.</p>
+        <p>Select the columns to use. You can leave Quantity blank (defaults to 1) and add a second Location column to combine.</p>
       </header>
       <section id="mapperFields" class="mapper-fields"></section>
       <footer>

@@ -1,33 +1,14 @@
-# Parts Assistant (Netlify)
+# Parts Assistant (Netlify, v3)
 
-A zero-backend web app to help electricians sort parts from totes to cabinets by parsing **AutoCAD Electrical BOM (by-location tallied)** CSV files.
+- **Always creates a Job** on CSV upload, even before mapping.
+- Shows **Column Mapper** with dropdowns. You can complete mapping now or later (job is marked **Mapping pending**).
+- Supports optional **second location column** (e.g., Room + Cabinet), **Quantity** default 1 if omitted, and **Description**.
+- **Map Columns** button lets you reopen the mapper for the selected job at any time.
 
-- **Upload multiple CSVs** — each file becomes a **Job** (job number inferred from filename, editable).
-- **Search by Part Number** — see all **locations** and **quantities** per job.
-- **Mark assignments** — track how many of each part you’ve placed at each location.
-- **Progress** — per-part and per-job status.
-- **Export** — download a CSV report with Assigned vs Remaining per location.
-- **Mobile & Desktop layouts** — separate pages optimized for each.
+## Deploy
+Publish the `public/` directory on Netlify.
 
-## Deploy to Netlify
-
-1. Drag-and-drop this folder into Netlify, or connect a repo.
-2. Ensure `netlify.toml` `publish = "public"` is set (it is).
-3. Open `/` for Desktop UI, `/mobile.html` for Mobile UI (the desktop page auto-suggests mobile when the viewport is small).
-
-## CSV Format & Column Mapping
-
-The app includes a **Column Mapper** after you upload:
-- Map **Part Number**, **Location**, **Quantity**, and optional **Description**.
-- It tries to auto-detect common header names (case-insensitive).
-
-This supports typical AutoCAD Electrical by-location tallied exports, where each row is a `(part, location, quantity)` triple. Duplicate rows aggregate automatically.
-
-## Persistence
-
-Data is saved to **LocalStorage** per browser. You can export/import a JSON backup under **Settings → Backup/Restore** if needed.
-
-## Notes
-
-- This app is intentionally static and works fully client-side. You can later add Netlify Functions + Blob storage for multi-user persistence.
-- If your CSV does not include headers, check **"No header row"** during import and set the column indexes.
+## Use
+1. Upload CSV(s). A Job is created immediately.
+2. Click **Map Columns** to choose fields. If you cancel, you can map later.
+3. Search by part → see locations → assign quantities.

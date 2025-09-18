@@ -1,4 +1,4 @@
-/* Parts Assistant — core logic (shared by desktop & mobile UIs) */
+/* Parts Assistant — v3: always create job on import, map later if needed */
 
 const $ = (sel, root=document) => root.querySelector(sel);
 const $$ = (sel, root=document) => Array.from(root.querySelectorAll(sel));
@@ -31,12 +31,12 @@ let state = {
   selectedJobId: null,
   searchPart: '',
   unassignedOnly: true,
-  pendingImport: null, // for mapper
 };
 
-// Job schema example:
+// Job schema:
 // job = {
 //   id, filename,
+//   pendingRaw: { headers: [], rows: [] } | null,
 //   parts: {
 //     [partNumber]: {
 //       description: '',
@@ -64,14 +64,13 @@ function load() {
 }
 
 function formatIdFromFilename(name) {
-  // Try to pull job number-ish string (before first dot)
   const base = name.replace(/\.[^/.]+$/, '');
   return base.trim().replace(/\s+/g, '_');
 }
 
 function ensureJob(jobId, filename) {
   if (!state.jobs[jobId]) {
-    state.jobs[jobId] = { id: jobId, filename: filename || jobId, parts: {} };
+    state.jobs[jobId] = { id: jobId, filename: filename || jobId, pendingRaw: null, parts: {} };
   }
   return state.jobs[jobId];
 }
@@ -118,9 +117,10 @@ function renderJobsList() {
       const stats = computeJobStats(job);
       const li = document.createElement('li');
       li.className = (state.selectedJobId===id) ? 'active' : '';
+      const pending = job.pendingRaw ? '<span class="tag" style="border-color:#f59e0b">pending</span>' : '';
       li.innerHTML = `
         <div>
-          <strong>${id}</strong><br/>
+          <strong>${id}</strong> ${pending}<br/>
           <small>${job.filename}</small>
         </div>
         <div class="tag">${stats.pct}%</div>
@@ -157,17 +157,20 @@ function renderJobStats() {
   }
   const job = state.jobs[state.selectedJobId];
   const s = computeJobStats(job);
-  els.jobStats.innerHTML = \`
-    <div><strong>Lines:</strong> \${s.lines}</div>
-    <div><strong>Required:</strong> \${s.required}</div>
-    <div><strong>Assigned:</strong> \${s.assigned}</div>
-    <div class="progress"><div style="width:\${s.pct}%"></div></div>
-    <div><strong>\${s.pct}%</strong> complete</div>
-  \`;
+  const pending = job.pendingRaw ? '<div class="tag" style="border-color:#f59e0b">Mapping pending</div>' : '';
+  els.jobStats.innerHTML = `
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <div><strong>Lines:</strong> ${s.lines}</div>
+      <div><strong>Required:</strong> ${s.required}</div>
+      <div><strong>Assigned:</strong> ${s.assigned}</div>
+      <div class="progress"><div style="width:${s.pct}%"></div></div>
+      <div><strong>${s.pct}%</strong> complete</div>
+      ${pending}
+    </div>
+  `;
 }
 
 function matchHeaders(headers) {
-  // return a mapping { part, location, quantity, description }
   const lower = headers.map(h => String(h||'').toLowerCase().trim());
   const find = (...cands) => {
     for (const c of cands) {
@@ -176,11 +179,20 @@ function matchHeaders(headers) {
     }
     return -1;
   };
+  const locPrimary = find('location','loc','panel','cabinet');
+  let locSecondary = -1;
+  if (locPrimary !== -1) {
+    for (const cand of ['cabinet','panel','room','area','section','bay']) {
+      const idx = lower.findIndex((h,i)=> (h===cand || h.includes(cand)) && i!==locPrimary);
+      if (idx !== -1) { locSecondary = idx; break; }
+    }
+  }
   return {
-    part: find('part', 'catalog', 'cat', 'mfg catalog', 'manufacturer catalog', 'part number'),
-    location: find('location', 'loc', 'panel', 'cabinet'),
-    quantity: find('qty', 'quantity', 'count', 'total'),
-    description: find('description', 'desc', 'details'),
+    part: find('part number','part','catalog','cat','mfg catalog','manufacturer catalog','catalog number','cat no','cat#','component_tag','component tag','item'),
+    location: locPrimary,
+    location2: locSecondary,
+    quantity: find('qty','quantity','count','total','sum'),
+    description: find('description','desc','details','component description','component_description','name','title'),
   };
 }
 
@@ -188,18 +200,18 @@ function openMapperDialog(sampleHeaders) {
   if (!els.mapperDialog) return Promise.resolve(null);
   els.mapperFields.innerHTML = '';
 
-  // Build fields
   const headers = sampleHeaders || [];
   const hasHeader = !els.noHeader?.checked;
   const options = hasHeader ? headers : headers.map((_,i)=>String(i));
 
-  const guessed = hasHeader ? matchHeaders(headers) : { part: 0, location: 1, quantity: 2, description: -1 };
+  const guessed = hasHeader ? matchHeaders(headers) : { part: 0, location: 1, location2: -1, quantity: -1, description: -1 };
 
   const fields = [
     {key:'jobId', label:'Job ID (from filename)', type:'text', value:''},
     {key:'part', label:'Part Number column', type:'select', value:guessed.part},
     {key:'location', label:'Location column', type:'select', value:guessed.location},
-    {key:'quantity', label:'Quantity column', type:'select', value:guessed.quantity},
+    {key:'location2', label:'Additional location column (optional)', type:'select', value:(guessed.location2 ?? -1)},
+    {key:'quantity', label:'Quantity column (optional; defaults to 1)', type:'select', value:(guessed.quantity ?? -1)},
     {key:'description', label:'Description column (optional)', type:'select', value:guessed.description},
   ];
 
@@ -247,6 +259,43 @@ function openMapperDialog(sampleHeaders) {
   });
 }
 
+function openMapperForJob(jobId) {
+  const job = state.jobs[jobId];
+  if (!job || !job.pendingRaw) { alert('No pending CSV mapping data for this job. Import a CSV first.'); return; }
+  const { headers, rows } = job.pendingRaw;
+  openMapperDialog(headers).then(mapping => {
+    if (!mapping) return; // keep pendingRaw
+    const combineLoc = (a,b) => {
+      const s1 = String(a||'').trim(), s2 = String(b||'').trim();
+      if (s1 && s2) return s1 + ' / ' + s2;
+      return s1 || s2 || 'UNSPECIFIED';
+    };
+    // Allow user to rename jobId during mapping
+    if (mapping.jobId && mapping.jobId.trim()) {
+      const newId = mapping.jobId.trim();
+      if (newId !== job.id && !state.jobs[newId]) {
+        state.jobs[newId] = { ...job, id: newId };
+        delete state.jobs[job.id];
+        state.selectedJobId = newId;
+      }
+    }
+    const currentJob = state.jobs[state.selectedJobId] || job;
+
+    rows.forEach(r => {
+      const get = (idx) => (idx>=0 ? r[idx] : '');
+      const part = get(mapping.part) || get(matchHeaders(headers).part);
+      const loc = combineLoc(get(mapping.location), get(mapping.location2));
+      const qtyRaw = get(mapping.quantity);
+      const qty = (mapping.quantity != null && mapping.quantity >= 0 && String(qtyRaw).trim()!=='') ? qtyRaw : 1;
+      const desc = get(mapping.description);
+      upsertPart(currentJob, part, loc, qty, desc);
+    });
+    currentJob.pendingRaw = null;
+    state.selectedJobId = currentJob.id;
+    save(); syncUI();
+  });
+}
+
 function parseCsvText(text, filename) {
   return new Promise((resolve,reject)=>{
     Papa.parse(text, {
@@ -260,25 +309,15 @@ function parseCsvText(text, filename) {
     let headers = rows[0];
     const noHeader = els.noHeader?.checked;
     const dataRows = noHeader ? rows : rows.slice(1);
-    state.pendingImport = { filename, rows: dataRows, headers: noHeader ? rows[0].map((_,i)=>'Column '+i) : headers };
-    const mapping = await openMapperDialog(headers);
-    if (!mapping) return; // cancelled
 
-    let jobId = mapping.jobId && mapping.jobId.trim() ? mapping.jobId.trim() : formatIdFromFilename(filename);
-    const job = ensureJob(jobId, filename);
-
-    dataRows.forEach(r => {
-      const get = (idx) => (idx>=0 ? r[idx] : '');
-      const part = get(mapping.part);
-      const loc = get(mapping.location);
-      const qty = get(mapping.quantity);
-      const desc = get(mapping.description);
-      upsertPart(job, part, loc, qty, desc);
-    });
-
-    state.selectedJobId = jobId;
-    save();
-    syncUI();
+    const defaultJobId = formatIdFromFilename(filename);
+    const job = ensureJob(defaultJobId, filename);
+    job.pendingRaw = { headers: (noHeader ? rows[0].map((_,i)=>'Column '+i) : headers), rows: dataRows };
+    state.selectedJobId = job.id;
+    save(); syncUI();
+    openMapperForJob(job.id);
+  }).catch(err => {
+    alert('Failed to parse CSV: ' + err.message);
   });
 }
 
@@ -294,7 +333,11 @@ function renderResults() {
   const job = state.jobs[state.selectedJobId];
   const partQuery = (state.searchPart||'').trim();
 
-  // If there is a part query, show the part details; else show a table of all (filtered)
+  if (job.pendingRaw && !Object.keys(job.parts).length) {
+    container.innerHTML = '<div class="empty">Job created. Click <strong>Map Columns</strong> to complete import.</div>';
+    return;
+  }
+
   if (partQuery) {
     const part = job.parts[partQuery];
     if (!part) {
@@ -303,7 +346,6 @@ function renderResults() {
     }
     container.appendChild(renderPartCard(partQuery, part, true));
   } else {
-    // List all parts (filtered by unassignedOnly)
     const entries = Object.entries(job.parts);
     let count = 0;
     for (const [pn, p] of entries) {
@@ -332,18 +374,17 @@ function renderPartCard(partNumber, part, expanded) {
   },0);
   const pct = required ? Math.round(100*assigned/required) : 0;
 
-  card.innerHTML = \`
-    <h3>\${partNumber}</h3>
+  card.innerHTML = `
+    <h3>${partNumber}</h3>
     <div class="meta">
-      <span class="badge">\${part.description || '— no description —'}</span>
-      <span class="badge">Required: \${required}</span>
-      <span class="badge">Assigned: \${assigned}</span>
-      <span class="badge">Remaining: \${Math.max(0, required - assigned)}</span>
+      <span class="badge">${part.description || '— no description —'}</span>
+      <span class="badge">Required: ${required}</span>
+      <span class="badge">Assigned: ${assigned}</span>
+      <span class="badge">Remaining: ${Math.max(0, required - assigned)}</span>
     </div>
-    <div class="progress"><div style="width:\${pct}%"></div></div>
-  \`;
+    <div class="progress"><div style="width:${pct}%"></div></div>
+  `;
 
-  // Build table of locations
   const table = document.createElement('table');
   table.className = 'table';
   table.innerHTML = '<thead><tr><th>Location</th><th>Required</th><th>Assigned</th><th>Remaining</th><th>Update</th></tr></thead>';
@@ -354,21 +395,20 @@ function renderPartCard(partNumber, part, expanded) {
     const asg = Math.min(part.assigned[loc]||0, req);
     const rem = Math.max(0, req - asg);
     const tr = document.createElement('tr');
-    tr.innerHTML = \`
-      <td><strong>\${loc}</strong></td>
-      <td>\${req}</td>
-      <td>\${asg}</td>
-      <td>\${rem}</td>
+    tr.innerHTML = `
+      <td><strong>${loc}</strong></td>
+      <td>${req}</td>
+      <td>${asg}</td>
+      <td>${rem}</td>
       <td class="qty">
         <div class="counter">
           <button data-delta="-1" class="ghost small">-1</button>
           <button data-delta="+1" class="ghost small">+1</button>
         </div>
-        <input type="number" min="0" step="1" value="\${asg}" class="assign-input"/>
+        <input type="number" min="0" step="1" value="${asg}" class="assign-input"/>
         <button class="primary small apply">Apply</button>
       </td>
-    \`;
-    // Handlers
+    `;
     const [minus, plus] = tr.querySelectorAll('button.ghost');
     minus.addEventListener('click', ()=> adjustAssignment(state.selectedJobId, partNumber, loc, -1));
     plus.addEventListener('click', ()=> adjustAssignment(state.selectedJobId, partNumber, loc, +1));
@@ -540,14 +580,19 @@ function initEvents() {
   }
   if (els.backupBtn) els.backupBtn.addEventListener('click', backupAll);
   if (els.restoreBtn) els.restoreBtn.addEventListener('click', restoreAll);
+  const mapBtn = document.getElementById('mapColumnsBtn');
+  if (mapBtn) {
+    mapBtn.addEventListener('click', ()=>{
+      if (!state.selectedJobId) { alert('Select a job first.'); return; }
+      openMapperForJob(state.selectedJobId);
+    });
+  }
 }
 
 function main() {
   load();
-  // Defaults
   if (els.unassignedOnly) els.unassignedOnly.checked = state.unassignedOnly;
   if (els.partSearch) els.partSearch.value = state.searchPart || '';
-
   initEvents();
   syncUI();
 }
