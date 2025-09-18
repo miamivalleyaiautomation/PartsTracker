@@ -1,10 +1,27 @@
 :root{
-  --bg:#0b0d12; --fg:#e5e7eb; --muted:#9aa3b2; --card:#111827; --line:#1f2937;
-  --accent:#4f46e5; --accent2:#06b6d4; --ok:#16a34a; --bad:#ef4444; --warn:#f59e0b;
-  --shadow: 0 10px 24px rgba(0,0,0,.25);
+  --bg:#070b1a;
+  --bg-grad-1:#070b1a;
+  --bg-grad-2:#0b1024;
+  --fg:#eaf0ff;
+  --muted:#9fb0c7;
+  --card:#0a142e;
+  --line:#1a2440;
+  --accent:#8b5cf6;
+  --accent2:#22d3ee;
+  --ok:#22c55e;
+  --bad:#f43f5e;
+  --warn:#f59e0b;
+  --shadow: 0 14px 28px rgba(0,0,0,.35);
 }
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Inter,Helvetica,Arial,sans-serif}
+body{
+  margin:0;
+  background: radial-gradient(1200px 800px at 20% -10%, rgba(139,92,246,.18), transparent 60%),
+              radial-gradient(1000px 700px at 100% 0%, rgba(34,211,238,.15), transparent 55%),
+              linear-gradient(180deg,var(--bg-grad-1), var(--bg-grad-2));
+  color:var(--fg);
+  font:15.5px/1.5 "Plus Jakarta Sans", system-ui, -apple-system, Segoe UI, Roboto, Inter, Helvetica, Arial, sans-serif;
+}
 
 .m-header{position:sticky;top:0;z-index:2;display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-bottom:1px solid var(--line);background:#0b0f17}
 .brand{display:flex;gap:10px;align-items:center}
@@ -13,22 +30,22 @@ body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.45 system-ui,-app
 .file-btn{position:relative;overflow:hidden;display:inline-flex;gap:6px;align-items:center;padding:6px 10px;border:1px dashed var(--line);border-radius:10px;cursor:pointer}
 .file-btn input{position:absolute;inset:0;opacity:0}
 button,.ghost{background:var(--accent);border:none;color:white;padding:8px 12px;border-radius:10px;cursor:pointer}
-.ghost{background:transparent;border:1px solid var(--line);color:var(--fg)}
+.ghost{background:transparent;border:1px solid var(--line);color:var(--fg);box-shadow:none}
 .ghost.small{padding:6px 10px;font-size:12px}
 
 .m-content{padding:12px;display:flex;flex-direction:column;gap:12px}
 .m-controls{display:flex;flex-direction:column;gap:8px}
-.m-job, input[type="text"], select{background:#0f1623;color:var(--fg);border:1px solid var(--line);border-radius:10px;padding:10px}
+.m-job, input[type="text"], select{background:#0b1430;color:var(--fg);border:1px solid var(--line);border-radius:12px;padding:10px;outline:2px solid transparent;outline-offset:2px}
 .small-options{display:flex;justify-content:space-between;gap:8px;align-items:center}
 
 .m-results{display:flex;flex-direction:column;gap:12px}
 .empty{padding:18px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:12px}
 
-.card{background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);padding:12px}
+.card{background:linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,.00)), var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:0 0 0 1px rgba(255,255,255,.04) inset, var(--shadow);padding:14px}
 .card h3{margin:0 0 6px 0}
 .meta{display:flex;gap:8px;color:var(--muted);font-size:12px;margin-bottom:8px;flex-wrap:wrap}
 .progress{height:8px;border-radius:6px;background:#0f1623;border:1px solid var(--line);overflow:hidden;margin:8px 0}
-.progress > div{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));width:0%}
+.progress > div{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));box-shadow:0 0 20px rgba(139,92,246,.35);width:0%}
 
 .row{display:flex;gap:8px;align-items:center;justify-content:space-between}
 .controls{display:flex;gap:6px}
@@ -39,8 +56,8 @@ button,.ghost{background:var(--accent);border:none;color:white;padding:8px 12px;
 
 /* Location pill filters */
 .loc-filters{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:8px 0 4px 0;overflow:auto;padding-bottom:6px}
-.loc-filters .pill{border:1px solid var(--line);background:rgba(255,255,255,.03);color:var(--fg);padding:6px 10px;border-radius:999px;cursor:pointer;user-select:none;white-space:nowrap}
-.loc-filters .pill.active{outline:2px solid var(--accent);background:rgba(99,102,241,.15)}
+.loc-filters .pill{border:1px solid var(--line);background:rgba(255,255,255,.04);color:var(--fg);padding:8px 12px;border-radius:999px;cursor:pointer;user-select:none;white-space:nowrap;transition:all .15s ease}
+.loc-filters .pill.active{outline:2px solid var(--accent);background:linear-gradient(90deg, rgba(139,92,246,.22), rgba(34,211,238,.18));box-shadow:0 0 0 3px rgba(139,92,246,.15)}
 .loc-filters .pill.all{border-style:dashed}
 
 /* ===== Job search UX ===== */
