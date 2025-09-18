@@ -35,6 +35,8 @@ let state = {
   unassignedOnly: true,
   locationFilter: null,
   jobQuery: '',
+  theme: 'warm',
+  scanMode: false,
 };
 
 // Job schema:
@@ -58,6 +60,8 @@ function save() {
     searchPart: state.searchPart,
     unassignedOnly: state.unassignedOnly,
     jobQuery: state.jobQuery,
+    theme: state.theme,
+    scanMode: state.scanMode,
   }));
 }
 
@@ -72,6 +76,8 @@ function load() {
     state.searchPart = (data.searchPart===undefined)? '' : data.searchPart;
     state.unassignedOnly = (data.unassignedOnly===undefined)? true : !!data.unassignedOnly;
     state.jobQuery = (data.jobQuery===undefined)? '' : data.jobQuery;
+    state.theme = (data.theme===undefined)? 'warm' : data.theme;
+    state.scanMode = !!data.scanMode;
   } catch(e) { console.warn('Failed to load storage', e); }
 }
 
@@ -434,6 +440,7 @@ function renderResults() {
 function renderPartCard(partNumber, part, expanded, onlyLoc) {
   const card = document.createElement('div');
   card.className = 'card';
+  card.id = 'part-' + partNumber;
 
   // Compute stats (respect onlyLoc when computing assigned)
   const required = Object.entries(part.locations).reduce((acc,[loc,qty])=> acc + (onlyLoc && loc!==onlyLoc ? 0 : qty), 0);
@@ -1012,12 +1019,73 @@ function initEvents() {
 }
 }
 
+
+function applyTheme(){
+  const root = document.documentElement;
+  root.setAttribute('data-theme', state.theme || 'warm');
+  // Update toggle UI text
+  const t = document.getElementById('themeToggle');
+  if (t) t.textContent = (state.theme==='warm') ? 'Color: Warm' : 'Color: Cosmic';
+}
+function toggleTheme(){
+  state.theme = (state.theme === 'warm') ? 'cosmic' : 'warm';
+  save(); applyTheme();
+}
+function toggleScan(){
+  state.scanMode = !state.scanMode;
+  const s = document.getElementById('scanToggle');
+  if (s){ s.textContent = state.scanMode ? 'Scan: On' : 'Scan: Off'; s.classList.toggle('toggle'); s.classList.toggle('on', state.scanMode); }
+  if (state.scanMode && els.partSearch) els.partSearch.focus();
+  save();
+}
+function beep(ok=true){
+  try{
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const o = ctx.createOscillator(); const g = ctx.createGain();
+    o.type='sine'; o.frequency.value = ok ? 880 : 200; g.gain.value = 0.06;
+    o.connect(g); g.connect(ctx.destination);
+    o.start(); setTimeout(()=>{ o.stop(); ctx.close(); }, ok ? 120 : 200);
+  }catch(e){}
+}
+function handleScanEnter(){
+  if (!state.scanMode) return false;
+  const job = state.jobs[state.selectedJobId]; if (!job) return false;
+  const q = (state.searchPart||'').trim().toLowerCase();
+  const entries = Object.entries(job.parts);
+  // Apply current location filter first
+  const loc = state.locationFilter;
+  let list = loc ? entries.filter(([pn, p]) => p.locations.hasOwnProperty(loc)) : entries;
+  // Substring match by part # or description
+  if (q) list = list.filter(([pn,p])=> pn.toLowerCase().includes(q) || (p.description||'').toLowerCase().includes(q));
+  if (list.length !== 1) { beep(false); return false; }
+
+  const [pn, p] = list[0];
+  // If there is exactly one location with remaining > 0, auto assign +1 to it.
+  const remainingLocs = Object.keys(p.locations).filter(L => (p.locations[L] - (p.assigned[L]||0)) > 0);
+  if (remainingLocs.length === 1){
+    adjustAssignment(state.selectedJobId, pn, remainingLocs[0], +1);
+    beep(true);
+  } else {
+    beep(true);
+  }
+  // Scroll to the card and flash
+  const el = document.getElementById('part-' + CSS.escape(pn));
+  if (el){ el.classList.add('flash'); el.scrollIntoView({behavior:'smooth', block:'center'}); setTimeout(()=>el.classList.remove('flash'), 900); }
+  // Clear search for next scan
+  state.searchPart = ''; if (els.partSearch) els.partSearch.value = ''; save(); syncUI();
+  return true;
+}
+
 function main() {
   load();
   if (els.unassignedOnly) els.unassignedOnly.checked = state.unassignedOnly;
   if (els.partSearch) els.partSearch.value = state.searchPart || '';
   if (els.jobSearch) els.jobSearch.value = state.jobQuery || '';
   initEvents();
+  applyTheme();
+  // Initialize toggle button labels
+  const tbtn = document.getElementById('themeToggle'); if (tbtn) tbtn.textContent = (state.theme==='warm') ? 'Color: Warm' : 'Color: Cosmic';
+  const sbtn = document.getElementById('scanToggle'); if (sbtn){ sbtn.textContent = state.scanMode ? 'Scan: On' : 'Scan: Off'; sbtn.classList.toggle('toggle'); sbtn.classList.toggle('on', state.scanMode); }
   syncUI();
 }
 
