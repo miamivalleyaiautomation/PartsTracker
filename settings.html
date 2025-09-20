@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Parts Assistant - Settings</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://unpkg.com/@zxing/browser@latest"></script>
+    <style>
+        .settings-section {
+            margin-bottom: 3rem;
+        }
+        
+        .settings-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 2rem;
+            box-shadow: var(--shadow-sm);
+            margin-bottom: 1.5rem;
+        }
+        
+        .settings-card h2 {
+            margin-bottom: 1.5rem;
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 0.75rem;
+        }
+        
+        .setting-group {
+            margin-bottom: 1.5rem;
+        }
+        
+        .setting-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+        
+        .setting-description {
+            font-size: 0.875rem;
+            color: var(--text-tertiary);
+            margin-top: 0.25rem;
+        }
+        
+        .setting-input {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            font-size: 0.9375rem;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            color: var(--text-primary);
+            transition: all var(--transition-base);
+        }
+        
+        .setting-input:focus {
+            outline: none;
+            border-color: var(--orange-primary);
+            box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.1);
+        }
+        
+        .setting-input[type="number"] {
+            max-width: 150px;
+        }
+        
+        .setting-checkbox {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.75rem;
+            cursor: pointer;
+            padding: 1rem;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            transition: all var(--transition-base);
+        }
+        
+        .setting-checkbox:hover {
+            background: var(--orange-bg);
+            border-color: var(--orange-light);
+        }
+        
+        .setting-checkbox input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            accent-color: var(--orange-primary);
+            margin-top: 2px;
+            flex-shrink: 0;
+        }
+        
+        .setting-checkbox-content {
+            flex: 1;
+        }
+        
+        .setting-checkbox-label {
+            font-weight: 500;
+            color: var(--text-primary);
+            display: block;
+            margin-bottom: 0.25rem;
+        }
+        
+        .test-area {
+            background: var(--bg-tertiary);
+            border: 2px dashed var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 1.5rem;
+            text-align: center;
+        }
+        
+        .test-input {
+            width: 100%;
+            max-width: 300px;
+            margin: 0 auto 1rem;
+            padding: 0.75rem;
+            font-size: 1rem;
+            font-family: var(--font-mono);
+            background: var(--bg-secondary);
+            border: 2px solid var(--orange-light);
+            border-radius: var(--radius-md);
+            text-align: center;
+        }
+        
+        .test-result {
+            margin-top: 1rem;
+            padding: 1rem;
+            background: var(--bg-secondary);
+            border-radius: var(--radius-md);
+            font-family: var(--font-mono);
+            min-height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .test-result.success {
+            background: var(--success);
+            color: white;
+        }
+        
+        .save-section {
+            position: sticky;
+            bottom: 0;
+            background: var(--bg-primary);
+            padding: 1.5rem 0;
+            margin-top: 2rem;
+            border-top: 2px solid var(--border-color);
+        }
+        
+        .save-actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+        }
+        
+        .camera-device-group {
+            margin-bottom: 1rem;
+        }
+        
+        .camera-select {
+            width: 100%;
+            padding: 0.75rem;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            color: var(--text-primary);
+            font-size: 0.9375rem;
+            cursor: pointer;
+        }
+        
+        @media (max-width: 768px) {
+            .settings-card {
+                padding: 1.25rem;
+            }
+            
+            .setting-input[type="number"] {
+                max-width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-container">
+            <button class="hamburger" id="hamburger" aria-label="Menu">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+            <h1 class="header-title">Settings</h1>
+            <div class="header-controls">
+                <button class="toggle-btn" id="themeToggle" aria-label="Toggle theme">
+                    <svg class="sun-icon" viewBox="0 0 24 24" width="20" height="20">
+                        <path d="M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zM2 13h2c.55 0 1-.45 1-1s-.45-1-1-1H2c-.55 0-1 .45-1 1s.45 1 1 1zm18 0h2c.55 0 1-.45 1-1s-.45-1-1-1h-2c-.55 0-1 .45-1 1s.45 1 1 1zM11 2v2c0 .55.45 1 1 1s1-.45 1-1V2c0-.55-.45-1-1-1s-1 .45-1 1zm0 18v2c0 .55.45 1 1 1s1-.45 1-1v-2c0-.55-.45-1-1-1s-1 .45-1 1zM5.99 4.58c-.39-.39-1.03-.39-1.41 0-.39.39-.39 1.03 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0s.39-1.03 0-1.41L5.99 4.58zm12.37 12.37c-.39-.39-1.03-.39-1.41 0-.39.39-.39 1.03 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0 .39-.39.39-1.03 0-1.41l-1.06-1.06zm1.06-10.96c.39-.39.39-1.03 0-1.41-.39-.39-1.03-.39-1.41 0l-1.06 1.06c-.39.39-.39 1.03 0 1.41s1.03.39 1.41 0l1.06-1.06zM7.05 18.36c.39-.39.39-1.03 0-1.41-.39-.39-1.03-.39-1.41 0l-1.06 1.06c-.39.39-.39 1.03 0 1.41s1.03.39 1.41 0l1.06-1.06z"/>
+                    </svg>
+                    <svg class="moon-icon" viewBox="0 0 24 24" width="20" height="20">
+                        <path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9c0-.46-.04-.92-.1-1.36-.98 1.37-2.58 2.26-4.4 2.26-2.98 0-5.4-2.42-5.4-5.4 0-1.81.89-3.42 2.26-4.4-.44-.06-.9-.1-1.36-.1z"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Mobile Navigation -->
+    <nav class="mobile-nav" id="mobileNav">
+        <a href="index.html" class="nav-link">
+            <svg viewBox="0 0 24 24" width="20" height="20">
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+            </svg>
+            Electrician
+        </a>
+        <a href="import.html" class="nav-link">
+            <svg viewBox="0 0 24 24" width="20" height="20">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+            </svg>
+            Import
+        </a>
+        <a href="settings.html" class="nav-link active">
+            <svg viewBox="0 0 24 24" width="20" height="20">
+                <circle cx="12" cy="12" r="3"/>
+                <path d="M12 1v6m0 6v6m4.22-13.22l4.24 4.24M1.54 1.54l4.24 4.24M20.46 20.46l-4.24-4.24M1.54 20.46l4.24-4.24"/>
+            </svg>
+            Settings
+        </a>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main">
+        <!-- Barcode Processing Settings -->
+        <section class="settings-section">
+            <div class="settings-card">
+                <h2>Barcode Processing</h2>
+                
+                <div class="setting-group">
+                    <label for="stripPrefix">Strip Prefix</label>
+                    <input 
+                        type="text" 
+                        id="stripPrefix" 
+                        class="setting-input"
+                        placeholder="e.g., PRE_"
+                    >
+                    <p class="setting-description">Remove this text from the beginning of scanned barcodes</p>
+                </div>
+                
+                <div class="setting-group">
+                    <label for="stripSuffix">Strip Suffix</label>
+                    <input 
+                        type="text" 
+                        id="stripSuffix" 
+                        class="setting-input"
+                        placeholder="e.g., _SUF"
+                    >
+                    <p class="setting-description">Remove this text from the end of scanned barcodes</p>
+                </div>
+                
+                <div class="setting-group">
+                    <label for="trimToLastN">Trim to Last N Characters</label>
+                    <input 
+                        type="number" 
+                        id="trimToLastN" 
+                        class="setting-input"
+                        min="0"
+                        max="50"
+                        value="0"
+                    >
+                    <p class="setting-description">Keep only the last N characters (0 = disabled)</p>
+                </div>
+                
+                <div class="setting-group">
+                    <label class="setting-checkbox">
+                        <input type="checkbox" id="uppercaseNormalization">
+                        <div class="setting-checkbox-content">
+                            <span class="setting-checkbox-label">Uppercase Normalization</span>
+                            <p class="setting-description">Convert all characters to uppercase (default: lowercase)</p>
+                        </div>
+                    </label>
+                </div>
+            </div>
+        </section>
+
+        <!-- UPC/EAN Settings -->
+        <section class="settings-section">
+            <div class="settings-card">
+                <h2>UPC/EAN Barcode Settings</h2>
+                
+                <div class="setting-group">
+                    <label class="setting-checkbox">
+                        <input type="checkbox" id="upcEanValidation">
+                        <div class="setting-checkbox-content">
+                            <span class="setting-checkbox-label">Enable UPC/EAN Processing</span>
+                            <p class="setting-description">Validate checksums and process UPC/EAN barcodes</p>
+                        </div>
+                    </label>
+                </div>
+                
+                <div class="setting-group">
+                    <label class="setting-checkbox">
+                        <input type="checkbox" id="expandUPCE">
+                        <div class="setting-checkbox-content">
+                            <span class="setting-checkbox-label">Expand UPC-E to UPC-A</span>
+                            <p class="setting-description">Convert 8-digit UPC-E codes to 12-digit UPC-A format</p>
+                        </div>
+                    </label>
+                </div>
+                
+                <div class="setting-group">
+                    <label class="setting-checkbox">
+                        <input type="checkbox" id="ignoreNonDigit">
+                        <div class="setting-checkbox-content">
+                            <span class="setting-checkbox-label">Ignore Non-Digits in UPC/EAN</span>
+                            <p class="setting-description">Remove non-numeric characters before UPC/EAN validation</p>
+                        </div>
+                    </label>
+                </div>
+            </div>
+        </section>
+
+        <!-- Assignment Settings -->
+        <section class="settings-section">
+            <div class="settings-card">
+                <h2>Assignment Behavior</h2>
+                
+                <div class="setting-group">
+                    <label class="setting-checkbox">
+                        <input type="checkbox" id="autoAssignToSingle" checked>
+                        <div class="setting-checkbox-content">
+                            <span class="setting-checkbox-label">Auto-assign to Single Location</span>
+                            <p class="setting-description">Automatically add +1 when part has only one location with remaining quantity</p>
+                        </div>
+                    </label>
+                </div>
+                
+                <div class="setting-group">
+                    <label class="setting-checkbox">
+                        <input type="checkbox" id="autoAssignToActivePill">
+                        <div class="setting-checkbox-content">
+                            <span class="setting-checkbox-label">Auto-assign to Active Location Pill</span>
+                            <p class="setting-description">Automatically add +1 to first matching location when a location filter is active</p>
+                        </div>
+                    </label>
+                </div>
+            </div>
+        </section>
+
+        <!-- Camera Settings -->
+        <section class="settings-section">
+            <div class="settings-card">
+                <h2>Camera Scanner Settings</h2>
+                
+                <div class="camera-device-group">
+                    <label for="preferredCamera">Preferred Camera</label>
+                    <select id="preferredCamera" class="camera-select">
+                        <option value="">Auto-select</option>
+                    </select>
+                    <p class="setting-description">Select which camera to use by default for scanning</p>
+                </div>
+                
+                <div class="setting-group">
+                    <label class="setting-checkbox">
+                        <input type="checkbox" id="beepOnSuccess" checked>
+                        <div class="setting-checkbox-content">
+                            <span class="setting-checkbox-label">Beep on Successful Scan</span>
+                            <p class="setting-description">Play a sound when barcode is successfully scanned</p>
+                        </div>
+                    </label>
+                </div>
+                
+                <div class="setting-group">
+                    <label class="setting-checkbox">
+                        <input type="checkbox" id="vibrateOnSuccess" checked>
+                        <div class="setting-checkbox-content">
+                            <span class="setting-checkbox-label">Vibrate on Successful Scan</span>
+                            <p class="setting-description">Vibrate device when barcode is successfully scanned (mobile only)</p>
+                        </div>
+                    </label>
+                </div>
+                
+                <div class="setting-group">
+                    <label for="vibrateDuration">Vibration Duration (ms)</label>
+                    <input 
+                        type="number" 
+                        id="vibrateDuration" 
+                        class="setting-input"
+                        min="50"
+                        max="1000"
+                        step="50"
+                        value="200"
+                    >
+                    <p class="setting-description">How long to vibrate in milliseconds</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Test Barcode Processing -->
+        <section class="settings-section">
+            <div class="settings-card">
+                <h2>Test Barcode Processing</h2>
+                
+                <div class="test-area">
+                    <p style="margin-bottom: 1rem; color: var(--text-secondary);">
+                        Enter a barcode to see how it will be processed with current settings
+                    </p>
+                    <input 
+                        type="text" 
+                        id="testBarcode" 
+                        class="test-input"
+                        placeholder="Enter test barcode..."
+                    >
+                    <button class="btn btn-primary" id="testButton">Test Processing</button>
+                    <div class="test-result" id="testResult">
+                        <span style="color: var(--text-tertiary);">Result will appear here</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Save Section -->
+        <div class="save-section">
+            <div class="save-actions">
+                <button class="btn btn-secondary" id="resetButton">Reset to Defaults</button>
+                <button class="btn btn-primary" id="saveButton">Save Settings</button>
+            </div>
+        </div>
+
+        <!-- Status Bar -->
+        <div class="status-bar" id="statusBar">
+            <span class="status-text"></span>
+        </div>
+    </main>
+
+    <!-- Scripts -->
+    <script type="module" src="js/config.js"></script>
+    <script type="module" src="js/utils.js"></script>
+    <script type="module" src="js/settings.js"></script>
+</body>
+</html>
