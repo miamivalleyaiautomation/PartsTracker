@@ -1,0 +1,9 @@
+{
+  "name": "parts-assistant-netlify",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "start": "netlify dev",
+    "build": "echo 'Static app \u2014 nothing to build'"
+  }
+}
