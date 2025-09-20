@@ -28,7 +28,7 @@
 body{
   margin:0;
   color:var(--fg);
-  font:15.5px/1.55 Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+  font:clamp(14px, 1.4vw, 16px)/1.6 Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
   background: var(--bg);
 }
 :root[data-theme="warm"] body{
@@ -141,3 +141,19 @@ h2,h3{font-weight:600}
 .header-actions{display:flex;gap:10px;align-items:center}
 .header-actions .toggles{display:flex;gap:8px;align-items:center}
 .header-actions button{pointer-events:auto}
+
+/* Fluid type */
+h1{font-size:clamp(20px,2.4vw,28px)}
+h2{font-size:clamp(16px,1.8vw,22px)}
+h3{font-size:clamp(15px,1.6vw,20px)}
+
+@media (max-width: 1200px){.layout{grid-template-columns:300px 1fr}}
+@media (max-width:900px){.layout{grid-template-columns:1fr}.sidebar{order:2}.content{order:1}}
+
+/* Animations */
+.card{transition: box-shadow 200ms ease, transform 200ms ease, background 200ms ease}
+.card:hover{transform: translateY(-2px)}
+.results .card{animation: fadeIn .22s ease both}
+.loc-filters .pill{transition: background 160ms ease, outline 160ms ease, transform 120ms ease}
+.loc-filters .pill:active{transform: scale(.98)}
+@keyframes fadeIn{from{opacity:0; transform: translateY(4px)} to{opacity:1; transform:translateY(0)}}
