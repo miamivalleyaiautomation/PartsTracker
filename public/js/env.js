@@ -1,0 +1,3 @@
+// js/env.js
+window.SUPABASE_URL = https://uyjltoxadacuqdamrvtu.supabase.co;
+window.SUPABASE_ANON_KEY = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV5amx0b3hhZGFjdXFkYW1ydnR1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTgzNzkyMTYsImV4cCI6MjA3Mzk1NTIxNn0.WJaX58X8ymVoADqkmKfxQB3MtKTjb_Pu1OruNDq4TEs;
