@@ -2032,3 +2032,42 @@ flex-direction: column;
 align-items: center;
 gap: 1rem;
 }
+/* Simple mobile fix for action buttons */
+@media (max-width: 768px) {
+  /* Hide action buttons on mobile by default */
+  .parts-table .actions-col {
+    display: none;
+  }
+  
+  /* Show actions when row is tapped/active */
+  .parts-table tbody tr.show-actions .actions-col {
+    display: table-cell;
+  }
+  
+  /* Make rows tappable */
+  .parts-table tbody tr {
+    cursor: pointer;
+    position: relative;
+  }
+  
+  /* Add tap indicator */
+  .parts-table tbody tr::after {
+    content: "⋯";
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-secondary);
+    font-size: 16px;
+  }
+  
+  .parts-table tbody tr.show-actions::after {
+    content: "×";
+  }
+  
+  /* Adjust column widths for mobile */
+  .part-col { width: 45% !important; }
+  .location-col { width: 25% !important; }
+  .qty-col { width: 15% !important; }
+  .progress-col { width: 15% !important; }
+}
