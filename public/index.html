@@ -5,16 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Parts Assistant - Electrician</title>
     <link rel="stylesheet" href="css/styles.css">
-    <!-- Scripts -->
-<<!-- Scripts -->
-<script src="js/env.js"></script>  <!-- ADD THIS LINE FIRST! -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="https://unpkg.com/@zxing/browser@latest"></script>
-<script type="module" src="js/config.js"></script>
-<script type="module" src="js/utils.js"></script>
-<script type="module" src="js/supabase-client.js"></script>
-<script type="module" src="js/electrician.js"></script>
-<script type="module" src="js/scanner.js"></script>
+    <script src="js/env.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://unpkg.com/@zxing/browser@latest"></script>
+    <script type="module" src="js/config.js"></script>
+    <script type="module" src="js/utils.js"></script>
+    <script type="module" src="js/supabase-client.js"></script>
+    <script type="module" src="js/electrician.js"></script>
+    <script type="module" src="js/scanner.js"></script>
 </head>
 <body>
     <!-- Header -->
@@ -109,11 +107,32 @@
             <button class="pill active" data-location="all">All Locations</button>
         </section>
 
-        <!-- Parts Grid -->
-        <section class="parts-grid" id="partsGrid">
-            <div class="loading-spinner" id="loadingSpinner">
-                <div class="spinner"></div>
-                <p>Loading parts...</p>
+        <!-- Parts Table -->
+        <section class="parts-section">
+            <div class="parts-table-container" id="partsTableContainer">
+                <table class="parts-table" id="partsTable">
+                    <thead>
+                        <tr>
+                            <th class="part-col">Part</th>
+                            <th class="location-col">Location</th>
+                            <th class="qty-col">Qty</th>
+                            <th class="progress-col">Progress</th>
+                            <th class="actions-col">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="partsTableBody">
+                        <!-- Parts will be populated here -->
+                    </tbody>
+                </table>
+                
+                <div class="loading-spinner" id="loadingSpinner">
+                    <div class="spinner"></div>
+                    <p>Loading parts...</p>
+                </div>
+                
+                <div class="empty-state" id="emptyState" style="display: none;">
+                    <p>No parts found. Import a BOM to get started.</p>
+                </div>
             </div>
         </section>
 
@@ -147,7 +166,6 @@
         </div>
     </div>
 
-    <!-- Scripts -->
     <script type="module" src="js/config.js"></script>
     <script type="module" src="js/utils.js"></script>
     <script type="module" src="js/supabase-client.js"></script>
