@@ -1,62 +1,64 @@
-// js/electrician.js
-// Electrician workflow page logic
+// js/electrician.js - Updated for table layout
+// Electrician page logic with table-based parts display
 
 import { 
-  initializeTheme, 
-  initializeScanMode, 
-  APP_CONFIG,
-  getAssignmentSettings 
+  initializeTheme,
+  APP_CONFIG
 } from './config.js';
 import { 
-  normalizeCode, 
-  processBarcode, 
-  debounce, 
-  showStatus, 
-  scrollToElement,
-  playBeep,
-  vibrate,
+  normalizeCode,
+  formatDate,
+  showStatus,
+  debounce,
   initializeCommonUI
 } from './utils.js';
 import { 
-  JobsAPI, 
-  PartsAPI, 
-  LocationsAPI 
+  JobsAPI,
+  PartsAPI,
+  LocationsAPI
 } from './supabase-client.js';
 
 // State
 let currentJob = null;
-let currentParts = [];
+let allParts = [];
 let filteredParts = [];
-let activeLocation = 'all';
-let scanMode = false;
+let allLocations = [];
+let selectedLocation = 'all';
+let jobs = [];
 
 // DOM Elements
-const jobSearchInput = document.getElementById('jobSearch');
+const jobSearch = document.getElementById('jobSearch');
 const jobResults = document.getElementById('jobResults');
-const partSearchInput = document.getElementById('partSearch');
+const partSearch = document.getElementById('partSearch');
 const partResults = document.getElementById('partResults');
 const locationPills = document.getElementById('locationPills');
-const partsGrid = document.getElementById('partsGrid');
-const scanToggle = document.getElementById('scanToggle');
+const partsTableBody = document.getElementById('partsTableBody');
 const loadingSpinner = document.getElementById('loadingSpinner');
+const emptyState = document.getElementById('emptyState');
+const statusBar = document.getElementById('statusBar');
 
 // Initialize
 document.addEventListener('DOMContentLoaded', async () => {
   initializeTheme();
   initializeCommonUI();
   
-  // Initialize scan mode
-  scanMode = initializeScanMode();
-  updateScanToggle();
-  
   // Set up event listeners
   setupEventListeners();
   
-  // Load initial data if job in URL
+  // Load jobs
+  await loadJobs();
+  
+  // Check for job parameter in URL
   const urlParams = new URLSearchParams(window.location.search);
   const jobId = urlParams.get('job');
   if (jobId) {
-    await loadJob(jobId);
+    const job = jobs.find(j => j.id === jobId);
+    if (job) {
+      await selectJob(job);
+    }
+  } else if (jobs.length > 0) {
+    // Auto-select first job if available
+    await selectJob(jobs[0]);
   }
 });
 
@@ -65,45 +67,60 @@ document.addEventListener('DOMContentLoaded', async () => {
  */
 function setupEventListeners() {
   // Job search
-  jobSearchInput.addEventListener('input', debounce(handleJobSearch, APP_CONFIG.SEARCH_DEBOUNCE));
-  jobSearchInput.addEventListener('keydown', handleJobSearchKeydown);
+  jobSearch.addEventListener('input', debounce(handleJobSearch, 300));
+  jobSearch.addEventListener('keydown', handleJobSearchKeydown);
   
   // Part search
-  partSearchInput.addEventListener('input', debounce(handlePartSearch, APP_CONFIG.SEARCH_DEBOUNCE));
-  partSearchInput.addEventListener('keydown', handlePartSearchKeydown);
+  partSearch.addEventListener('input', debounce(handlePartSearch, 300));
+  partSearch.addEventListener('keydown', handlePartSearchKeydown);
   
-  // Scan toggle
-  scanToggle.addEventListener('click', toggleScanMode);
-  
-  // Click outside to close dropdowns
+  // Click outside search results
   document.addEventListener('click', (e) => {
-    if (!jobSearchInput.contains(e.target) && !jobResults.contains(e.target)) {
+    if (!e.target.closest('.search-group')) {
       jobResults.classList.remove('active');
-    }
-    if (!partSearchInput.contains(e.target) && !partResults.contains(e.target)) {
       partResults.classList.remove('active');
     }
   });
 }
 
 /**
- * Handle job search input
+ * Load jobs
+ */
+async function loadJobs() {
+  try {
+    jobs = await JobsAPI.list();
+    
+    // Get stats for each job
+    for (const job of jobs) {
+      const stats = await JobsAPI.getWithStats(job.id);
+      job.part_count = stats.part_count;
+      job.location_count = stats.location_count;
+    }
+    
+  } catch (error) {
+    console.error('Error loading jobs:', error);
+    showStatus('Error loading jobs', 'error');
+  }
+}
+
+/**
+ * Handle job search
  */
 async function handleJobSearch() {
-  const query = jobSearchInput.value.trim();
+  const query = jobSearch.value.trim();
   
   if (!query) {
     jobResults.classList.remove('active');
     return;
   }
   
-  try {
-    const jobs = await JobsAPI.search(query);
-    displayJobResults(jobs);
-  } catch (error) {
-    console.error('Job search error:', error);
-    showStatus('Error searching jobs', 'error');
-  }
+  // Filter jobs
+  const matchingJobs = jobs.filter(job => 
+    job.job_number.toLowerCase().includes(query.toLowerCase()) ||
+    normalizeCode(job.job_number).includes(normalizeCode(query))
+  );
+  
+  displayJobSearchResults(matchingJobs);
 }
 
 /**
@@ -117,102 +134,94 @@ function handleJobSearchKeydown(e) {
     }
   } else if (e.key === 'Escape') {
     jobResults.classList.remove('active');
-    jobSearchInput.blur();
   }
 }
 
 /**
  * Display job search results
  */
-function displayJobResults(jobs) {
+function displayJobSearchResults(jobs) {
   if (jobs.length === 0) {
-    jobResults.innerHTML = '<div class="empty-state">No jobs found</div>';
-  } else {
-    jobResults.innerHTML = jobs.map(job => `
-      <div class="search-result-item" data-job-id="${job.id}">
-        <div class="result-main">${job.job_number}</div>
-        ${job.filename ? `<div class="result-sub">${job.filename}</div>` : ''}
-      </div>
-    `).join('');
-    
-    // Add click handlers
-    jobResults.querySelectorAll('.search-result-item').forEach(item => {
-      item.addEventListener('click', () => {
-        const jobId = item.dataset.jobId;
-        const job = jobs.find(j => j.id === jobId);
-        selectJob(job);
-      });
-    });
+    jobResults.classList.remove('active');
+    return;
   }
   
+  const html = jobs.map(job => `
+    <div class="search-result-item" data-job-id="${job.id}">
+      <div class="result-main">${job.job_number}</div>
+      <div class="result-sub">${job.part_count || 0} parts, ${job.location_count || 0} locations</div>
+    </div>
+  `).join('');
+  
+  jobResults.innerHTML = html;
   jobResults.classList.add('active');
+  
+  // Add click handlers
+  jobResults.querySelectorAll('.search-result-item').forEach(item => {
+    item.addEventListener('click', () => {
+      const jobId = item.dataset.jobId;
+      const job = jobs.find(j => j.id === jobId);
+      selectJob(job);
+    });
+  });
 }
 
 /**
  * Select a job
  */
 async function selectJob(job) {
+  if (!job) return;
+  
   currentJob = job;
-  jobSearchInput.value = job.job_number;
+  jobSearch.value = job.job_number;
   jobResults.classList.remove('active');
   
   // Update URL
   const url = new URL(window.location);
   url.searchParams.set('job', job.id);
-  window.history.pushState({}, '', url);
+  window.history.replaceState(null, '', url);
   
-  // Load job data
-  await loadJob(job.id);
+  // Load parts for this job
+  await loadParts();
 }
 
 /**
- * Load job data
+ * Load parts for current job
  */
-async function loadJob(jobId) {
+async function loadParts() {
+  if (!currentJob) return;
+  
   try {
     showLoading(true);
     
-    // Get job if not already loaded
-    if (!currentJob || currentJob.id !== jobId) {
-      const jobs = await JobsAPI.list();
-      currentJob = jobs.find(j => j.id === jobId);
-      if (currentJob) {
-        jobSearchInput.value = currentJob.job_number;
-      }
-    }
-    
-    if (!currentJob) {
-      showStatus('Job not found', 'error');
-      showLoading(false);
-      return;
-    }
-    
     // Load parts with locations
-    currentParts = await PartsAPI.getWithLocations(jobId);
+    allParts = await PartsAPI.getWithLocations(currentJob.id);
     
-    // Load unique locations
-    const locations = await LocationsAPI.getUniqueForJob(jobId);
-    displayLocationPills(locations);
+    // Get unique locations
+    allLocations = await LocationsAPI.getUniqueForJob(currentJob.id);
     
-    // Display parts
-    filterAndDisplayParts();
+    // Update location pills
+    updateLocationPills();
     
-    showStatus(`Loaded ${currentParts.length} parts`, 'success');
+    // Filter and display parts
+    filterParts();
+    
+    showLoading(false);
+    
   } catch (error) {
-    console.error('Error loading job:', error);
-    showStatus('Error loading job data', 'error');
-  } finally {
+    console.error('Error loading parts:', error);
+    showStatus('Error loading parts', 'error');
     showLoading(false);
   }
 }
 
 /**
- * Display location pills
+ * Update location pills
  */
-function displayLocationPills(locations) {
+function updateLocationPills() {
   const pills = ['<button class="pill active" data-location="all">All Locations</button>'];
   
-  locations.forEach(location => {
+  allLocations.forEach(location => {
     pills.push(`<button class="pill" data-location="${location}">${location}</button>`);
   });
   
@@ -221,304 +230,216 @@ function displayLocationPills(locations) {
   // Add click handlers
   locationPills.querySelectorAll('.pill').forEach(pill => {
     pill.addEventListener('click', () => {
+      selectedLocation = pill.dataset.location;
+      
+      // Update active state
       locationPills.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
       pill.classList.add('active');
-      activeLocation = pill.dataset.location;
-      filterAndDisplayParts();
+      
+      // Filter parts
+      filterParts();
     });
   });
+}
+
+/**
+ * Filter parts based on selected location and search
+ */
+function filterParts() {
+  let filtered = [...allParts];
+  
+  // Filter by location
+  if (selectedLocation !== 'all') {
+    filtered = filtered.filter(part => 
+      part.part_locations?.some(loc => loc.location === selectedLocation)
+    );
+  }
+  
+  // Filter by part search
+  const partQuery = partSearch.value.trim().toLowerCase();
+  if (partQuery) {
+    filtered = filtered.filter(part => 
+      part.part_number.toLowerCase().includes(partQuery) ||
+      (part.description && part.description.toLowerCase().includes(partQuery))
+    );
+  }
+  
+  filteredParts = filtered;
+  displayPartsTable();
+}
+
+/**
+ * Display parts in table format
+ */
+function displayPartsTable() {
+  if (!filteredParts || filteredParts.length === 0) {
+    partsTableBody.innerHTML = '';
+    emptyState.style.display = 'block';
+    return;
+  }
+  
+  emptyState.style.display = 'none';
+  
+  // Clear existing rows
+  partsTableBody.innerHTML = '';
+  
+  filteredParts.forEach(part => {
+    const row = createPartRow(part);
+    partsTableBody.appendChild(row);
+  });
+}
+
+/**
+ * Create a table row for a part
+ */
+function createPartRow(part) {
+  const row = document.createElement('tr');
+  row.dataset.partId = part.id;
+  
+  // Calculate totals
+  const totalRequired = part.part_locations?.reduce((sum, loc) => sum + loc.qty_required, 0) || 0;
+  const totalAssigned = part.part_locations?.reduce((sum, loc) => sum + loc.qty_assigned, 0) || 0;
+  const progress = totalRequired > 0 ? Math.round((totalAssigned / totalRequired) * 100) : 0;
+  
+  row.innerHTML = `
+    <td class="part-col">
+      <div class="part-info">
+        <div class="part-number">${part.part_number}</div>
+        <div class="part-description">${part.description || ''}</div>
+      </div>
+    </td>
+    
+    <td class="location-col">
+      <div class="location-pills-table">
+        ${part.part_locations?.map(loc => 
+          `<span class="location-pill-small">${loc.location}</span>`
+        ).join('') || ''}
+      </div>
+    </td>
+    
+    <td class="qty-col">
+      <div class="qty-display">
+        <div class="qty-text">${totalAssigned}/${totalRequired}</div>
+        <div class="qty-labels">
+          <span>ASGN</span>
+          <span>REQ</span>
+        </div>
+      </div>
+    </td>
+    
+    <td class="progress-col">
+      <div class="progress-container">
+        <div class="progress-bar-small">
+          <div class="progress-fill-small ${getProgressClass(progress)}" 
+               style="width: ${progress}%"></div>
+        </div>
+        <div class="progress-text-small">${progress}%</div>
+      </div>
+    </td>
+    
+    <td class="actions-col">
+      <div class="action-buttons">
+        <button class="action-btn" onclick="adjustQuantity('${part.id}', -1)">-1</button>
+        <button class="action-btn" onclick="adjustQuantity('${part.id}', 1)">+1</button>
+        <button class="action-btn set-btn" onclick="setQuantity('${part.id}')">Set</button>
+        <button class="action-btn full-btn" onclick="setFull('${part.id}')">Full</button>
+      </div>
+    </td>
+  `;
+  
+  return row;
+}
+
+/**
+ * Get progress class based on percentage
+ */
+function getProgressClass(progress) {
+  if (progress === 100) return 'complete';
+  if (progress > 0) return 'partial';
+  return 'empty';
 }
 
 /**
  * Handle part search
  */
-async function handlePartSearch() {
-  if (!currentJob) {
-    showStatus('Please select a job first', 'info');
+function handlePartSearch() {
+  const query = partSearch.value.trim();
+  
+  if (!query) {
+    partResults.classList.remove('active');
+    filterParts(); // Refresh display
     return;
   }
   
-  filterAndDisplayParts();
+  // Filter parts for search results
+  const matchingParts = allParts.filter(part => 
+    part.part_number.toLowerCase().includes(query.toLowerCase()) ||
+    (part.description && part.description.toLowerCase().includes(query.toLowerCase()))
+  );
+  
+  displayPartSearchResults(matchingParts);
+  filterParts(); // Also update main display
 }
 
 /**
  * Handle part search keydown
  */
-async function handlePartSearchKeydown(e) {
-  if (e.key === 'Enter' && scanMode) {
-    e.preventDefault();
-    await handleScan(partSearchInput.value);
-    partSearchInput.value = '';
+function handlePartSearchKeydown(e) {
+  if (e.key === 'Enter') {
+    const firstResult = partResults.querySelector('.search-result-item');
+    if (firstResult) {
+      firstResult.click();
+    }
   } else if (e.key === 'Escape') {
-    partSearchInput.blur();
+    partResults.classList.remove('active');
   }
 }
 
 /**
- * Filter and display parts
+ * Display part search results
  */
-function filterAndDisplayParts() {
-  const searchQuery = partSearchInput.value.trim();
-  const normalized = normalizeCode(searchQuery);
-  
-  // Filter by search query
-  if (searchQuery) {
-    filteredParts = currentParts.filter(part => {
-      const partNorm = normalizeCode(part.part_number);
-      const descMatch = part.description && 
-        part.description.toLowerCase().includes(searchQuery.toLowerCase());
-      return partNorm.includes(normalized) || descMatch;
-    });
-  } else {
-    filteredParts = [...currentParts];
-  }
-  
-  // Filter by location
-  if (activeLocation !== 'all') {
-    filteredParts = filteredParts.filter(part => {
-      return part.part_locations.some(loc => loc.location === activeLocation);
-    });
-  }
-  
-  displayParts();
-}
-
-/**
- * Display parts grid
- */
-function displayParts() {
-  if (filteredParts.length === 0) {
-    partsGrid.innerHTML = `
-      <div class="empty-state">
-        <svg viewBox="0 0 24 24" width="64" height="64">
-          <path stroke="currentColor" fill="none" stroke-width="2" d="M20 7H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2zM12 4v3m0 10v4"/>
-        </svg>
-        <p>No parts found</p>
-      </div>
-    `;
+function displayPartSearchResults(parts) {
+  if (parts.length === 0) {
+    partResults.classList.remove('active');
     return;
   }
   
-  const cards = filteredParts.map(part => {
-    // Calculate totals
-    let totalRequired = 0;
-    let totalAssigned = 0;
-    
-    // Filter locations for active location
-    let locations = part.part_locations || [];
-    if (activeLocation !== 'all') {
-      locations = locations.filter(loc => loc.location === activeLocation);
-    }
-    
-    locations.forEach(loc => {
-      totalRequired += loc.qty_required;
-      totalAssigned += loc.qty_assigned;
-    });
-    
-    const progress = totalRequired > 0 ? (totalAssigned / totalRequired * 100) : 0;
+  const html = parts.slice(0, 10).map(part => {
+    const totalRequired = part.part_locations?.reduce((sum, loc) => sum + loc.qty_required, 0) || 0;
+    const totalAssigned = part.part_locations?.reduce((sum, loc) => sum + loc.qty_assigned, 0) || 0;
     
     return `
-      <div class="part-card" data-part-id="${part.id}" data-part-number="${part.part_number}">
-        <div class="part-header">
-          <div class="part-number">${part.part_number}</div>
-          ${part.description ? `<div class="part-description">${part.description}</div>` : ''}
-        </div>
-        
-        <div class="part-progress">
-          <div class="progress-info">
-            <span class="progress-label">Progress</span>
-            <span class="progress-value">${totalAssigned} / ${totalRequired}</span>
-          </div>
-          <div class="progress-bar-container">
-            <div class="progress-bar-fill" style="width: ${progress}%"></div>
-          </div>
-        </div>
-        
-        <div class="part-locations">
-          ${locations.map(loc => {
-            const remaining = loc.qty_required - loc.qty_assigned;
-            const isComplete = remaining === 0;
-            
-            return `
-              <div class="location-row" data-location-id="${loc.id}">
-                <div class="location-name">${loc.location}</div>
-                <div class="location-stat">
-                  <span class="stat-label">Req</span>
-                  <span class="stat-value">${loc.qty_required}</span>
-                </div>
-                <div class="location-stat">
-                  <span class="stat-label">Asgn</span>
-                  <span class="stat-value">${loc.qty_assigned}</span>
-                </div>
-                <div class="location-stat">
-                  <span class="stat-label">Rem</span>
-                  <span class="stat-value ${isComplete ? 'complete' : 'remaining'}">${remaining}</span>
-                </div>
-                <div class="location-actions">
-                  <button class="action-btn" onclick="updateQuantity('${loc.id}', -1)">-1</button>
-                  <button class="action-btn" onclick="updateQuantity('${loc.id}', 1)">+1</button>
-                  <button class="action-btn set-btn" onclick="setQuantity('${loc.id}')">Set</button>
-                  <button class="action-btn full-btn" onclick="markFull('${loc.id}')">Full</button>
-                </div>
-              </div>
-            `;
-          }).join('')}
-        </div>
+      <div class="search-result-item" data-part-id="${part.id}">
+        <div class="result-main">${part.part_number}</div>
+        <div class="result-sub">${part.description || ''} • ${totalAssigned}/${totalRequired}</div>
       </div>
     `;
   }).join('');
   
-  partsGrid.innerHTML = cards;
-}
-
-/**
- * Update quantity
- */
-window.updateQuantity = async function(locationId, delta) {
-  try {
-    await LocationsAPI.updateAssigned(locationId, delta);
-    await loadJob(currentJob.id);
-    
-    const action = delta > 0 ? 'Added' : 'Removed';
-    showStatus(`${action} ${Math.abs(delta)}`, 'success');
-  } catch (error) {
-    console.error('Error updating quantity:', error);
-    showStatus('Error updating quantity', 'error');
-  }
-};
-
-/**
- * Set quantity
- */
-window.setQuantity = async function(locationId) {
-  const input = prompt('Enter quantity:');
-  if (input === null) return;
+  partResults.innerHTML = html;
+  partResults.classList.add('active');
   
-  const qty = parseInt(input);
-  if (isNaN(qty) || qty < 0) {
-    showStatus('Invalid quantity', 'error');
-    return;
-  }
-  
-  try {
-    await LocationsAPI.setAssigned(locationId, qty);
-    await loadJob(currentJob.id);
-    showStatus(`Set quantity to ${qty}`, 'success');
-  } catch (error) {
-    console.error('Error setting quantity:', error);
-    showStatus('Error setting quantity', 'error');
-  }
-};
-
-/**
- * Mark location as full
- */
-window.markFull = async function(locationId) {
-  try {
-    const location = currentParts
-      .flatMap(p => p.part_locations)
-      .find(l => l.id === locationId);
-    
-    await LocationsAPI.setAssigned(locationId, location.qty_required);
-    await loadJob(currentJob.id);
-    showStatus('Marked as full', 'success');
-  } catch (error) {
-    console.error('Error marking full:', error);
-    showStatus('Error marking full', 'error');
-  }
-};
-
-/**
- * Handle scan
- */
-async function handleScan(code) {
-  if (!currentJob) {
-    showStatus('Please select a job first', 'info');
-    return;
-  }
-  
-  // Process barcode
-  const processed = processBarcode(code);
-  const normalized = normalizeCode(processed);
-  
-  // Find matching part
-  const matchingParts = currentParts.filter(part => {
-    return normalizeCode(part.part_number) === normalized;
+  // Add click handlers
+  partResults.querySelectorAll('.search-result-item').forEach(item => {
+    item.addEventListener('click', () => {
+      const partId = item.dataset.partId;
+      scrollToPartInTable(partId);
+      partResults.classList.remove('active');
+    });
   });
-  
-  if (matchingParts.length === 0) {
-    showStatus('Part not found', 'error');
-    playBeep();
-    return;
-  }
-  
-  if (matchingParts.length > 1) {
-    showStatus('Multiple parts match this code', 'warning');
-    return;
-  }
-  
-  const part = matchingParts[0];
-  const partCard = document.querySelector(`[data-part-id="${part.id}"]`);
-  
-  if (partCard) {
-    scrollToElement(partCard);
-  }
-  
-  // Auto-assign if settings allow
-  const settings = getAssignmentSettings();
-  const locations = activeLocation === 'all' 
-    ? part.part_locations 
-    : part.part_locations.filter(l => l.location === activeLocation);
-  
-  const locationsWithRemaining = locations.filter(l => l.qty_required > l.qty_assigned);
-  
-  if (locationsWithRemaining.length === 1 && settings.autoAssignToSingle) {
-    // Auto-assign to single location
-    await updateQuantity(locationsWithRemaining[0].id, 1);
-    showStatus(`Auto-assigned to ${locationsWithRemaining[0].location}`, 'success');
-    
-    if (APP_CONFIG.SCANNER.beepOnSuccess) playBeep();
-    if (APP_CONFIG.SCANNER.vibrateOnSuccess) vibrate();
-  } else if (activeLocation !== 'all' && locationsWithRemaining.length > 0 && settings.autoAssignToActivePill) {
-    // Auto-assign to first location in active pill
-    await updateQuantity(locationsWithRemaining[0].id, 1);
-    showStatus(`Auto-assigned to ${locationsWithRemaining[0].location}`, 'success');
-    
-    if (APP_CONFIG.SCANNER.beepOnSuccess) playBeep();
-    if (APP_CONFIG.SCANNER.vibrateOnSuccess) vibrate();
-  } else {
-    showStatus(`Found ${part.part_number} - ${locationsWithRemaining.length} locations available`, 'info');
-  }
 }
 
 /**
- * Toggle scan mode
+ * Scroll to part in table
  */
-function toggleScanMode() {
-  scanMode = !scanMode;
-  localStorage.setItem(APP_CONFIG.STORAGE_KEYS.scanMode, scanMode);
-  updateScanToggle();
-  
-  if (scanMode) {
-    partSearchInput.focus();
-    showStatus('Scan mode enabled', 'info');
-  } else {
-    showStatus('Scan mode disabled', 'info');
-  }
-}
-
-/**
- * Update scan toggle UI
- */
-function updateScanToggle() {
-  if (scanMode) {
-    scanToggle.classList.add('active');
-    scanToggle.querySelector('.toggle-state').textContent = 'On';
-    partSearchInput.placeholder = 'Scan or type part number...';
-  } else {
-    scanToggle.classList.remove('active');
-    scanToggle.querySelector('.toggle-state').textContent = 'Off';
-    partSearchInput.placeholder = 'Search or scan part...';
+function scrollToPartInTable(partId) {
+  const row = partsTableBody.querySelector(`tr[data-part-id="${partId}"]`);
+  if (row) {
+    row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    row.style.background = 'var(--primary-light)';
+    setTimeout(() => {
+      row.style.background = '';
+    }, 2000);
   }
 }
 
@@ -528,9 +449,102 @@ function updateScanToggle() {
 function showLoading(show) {
   if (show) {
     loadingSpinner.style.display = 'flex';
-    partsGrid.style.display = 'none';
+    emptyState.style.display = 'none';
   } else {
     loadingSpinner.style.display = 'none';
-    partsGrid.style.display = 'grid';
   }
 }
+
+/**
+ * Adjust quantity for a part
+ */
+window.adjustQuantity = async function(partId, delta) {
+  try {
+    const part = allParts.find(p => p.id === partId);
+    if (!part || !part.part_locations?.length) return;
+    
+    // Find the first location or the one matching current filter
+    let targetLocation = part.part_locations[0];
+    if (selectedLocation !== 'all') {
+      const locationMatch = part.part_locations.find(loc => loc.location === selectedLocation);
+      if (locationMatch) {
+        targetLocation = locationMatch;
+      }
+    }
+    
+    // Update quantity
+    await LocationsAPI.updateAssigned(targetLocation.id, delta);
+    
+    // Reload parts to get fresh data
+    await loadParts();
+    
+    showStatus(`Updated ${part.part_number}`, 'success');
+    
+  } catch (error) {
+    console.error('Error adjusting quantity:', error);
+    showStatus('Error updating quantity', 'error');
+  }
+};
+
+/**
+ * Set specific quantity for a part
+ */
+window.setQuantity = async function(partId) {
+  const quantity = prompt('Enter quantity:');
+  if (quantity === null || quantity === '') return;
+  
+  const qty = parseInt(quantity);
+  if (isNaN(qty) || qty < 0) {
+    showStatus('Invalid quantity', 'error');
+    return;
+  }
+  
+  try {
+    const part = allParts.find(p => p.id === partId);
+    if (!part || !part.part_locations?.length) return;
+    
+    let targetLocation = part.part_locations[0];
+    if (selectedLocation !== 'all') {
+      const locationMatch = part.part_locations.find(loc => loc.location === selectedLocation);
+      if (locationMatch) {
+        targetLocation = locationMatch;
+      }
+    }
+    
+    await LocationsAPI.setAssigned(targetLocation.id, qty);
+    await loadParts();
+    
+    showStatus(`Set ${part.part_number} to ${qty}`, 'success');
+    
+  } catch (error) {
+    console.error('Error setting quantity:', error);
+    showStatus('Error setting quantity', 'error');
+  }
+};
+
+/**
+ * Set full quantity for a part
+ */
+window.setFull = async function(partId) {
+  try {
+    const part = allParts.find(p => p.id === partId);
+    if (!part || !part.part_locations?.length) return;
+    
+    let targetLocation = part.part_locations[0];
+    if (selectedLocation !== 'all') {
+      const locationMatch = part.part_locations.find(loc => loc.location === selectedLocation);
+      if (locationMatch) {
+        targetLocation = locationMatch;
+      }
+    }
+    
+    await LocationsAPI.setAssigned(targetLocation.id, targetLocation.qty_required);
+    await loadParts();
+    
+    showStatus(`Set ${part.part_number} to full`, 'success');
+    
+  } catch (error) {
+    console.error('Error setting full:', error);
+    showStatus('Error setting full', 'error');
+  }
+};
