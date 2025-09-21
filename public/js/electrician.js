@@ -1,4 +1,3 @@
-Here is old working js.
 
 // js/electrician.js - Updated for table layout
 // Electrician page logic with table-based parts display
