@@ -1,4 +1,6 @@
-// js/electrician.js - Updated for double-row table layout
+Here is old working js.
+
+// js/electrician.js - Updated for table layout
 // Electrician page logic with table-based parts display
 
 import {
@@ -294,12 +296,15 @@ emptyState.style.display = ‘none’;
 partsTableBody.innerHTML = ‘’;
 
 filteredParts.forEach(part => {
-const rowElements = createPartRow(part);
-partsTableBody.appendChild(rowElements);
+const row = createPartRow(part);
+partsTableBody.appendChild(row);
 });
 }
 
 /**
+
+- Create a table row for a part
+  *//**
 
 - Create a double table row for a part (info row + actions row)
   */
@@ -367,6 +372,63 @@ fragment.appendChild(infoRow);
 fragment.appendChild(actionsRow);
 
 return fragment;
+}
+
+// Calculate totals
+const totalRequired = part.part_locations?.reduce((sum, loc) => sum + loc.qty_required, 0) || 0;
+const totalAssigned = part.part_locations?.reduce((sum, loc) => sum + loc.qty_assigned, 0) || 0;
+const progress = totalRequired > 0 ? Math.round((totalAssigned / totalRequired) * 100) : 0;
+
+row.innerHTML = `
+<td class="part-col">
+<div class="part-info">
+<div class="part-number">${part.part_number}</div>
+<div class="part-description">${part.description || ‘’}</div>
+</div>
+</td>
+
+```
+<td class="location-col">
+  <div class="location-pills-table">
+    ${part.part_locations?.map(loc => 
+      `<span class="location-pill-small">${loc.location}</span>`
+    ).join('') || ''}
+  </div>
+</td>
+
+<td class="qty-col">
+  <div class="qty-display">
+    <div class="qty-text">${totalAssigned}/${totalRequired}</div>
+    <div class="qty-labels">
+      <span>ASGN</span>
+      <span>REQ</span>
+    </div>
+  </div>
+</td>
+
+<td class="progress-col">
+  <div class="progress-container">
+    <div class="progress-bar-small">
+      <div class="progress-fill-small ${getProgressClass(progress)}" 
+           style="width: ${progress}%"></div>
+    </div>
+    <div class="progress-text-small">${progress}%</div>
+  </div>
+</td>
+
+<td class="actions-col">
+  <div class="action-buttons">
+    <button class="action-btn" onclick="adjustQuantity('${part.id}', -1)">-1</button>
+    <button class="action-btn" onclick="adjustQuantity('${part.id}', 1)">+1</button>
+    <button class="action-btn set-btn" onclick="setQuantity('${part.id}')">Set</button>
+    <button class="action-btn full-btn" onclick="setFull('${part.id}')">Full</button>
+  </div>
+</td>
+```
+
+`;
+
+return row;
 }
 
 /**
